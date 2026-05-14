@@ -1,0 +1,39 @@
+services:
+  db:
+    # TimescaleDB image with pgvector pre-installed via the timescale/pgvectorscale image
+    image: timescale/timescaledb-ha:pg16
+    container_name: divergence-db
+    environment:
+      POSTGRES_DB: divergence
+      POSTGRES_USER: divergence
+      POSTGRES_PASSWORD: divergence
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_data:/home/postgres/pgdata/data
+      - ./app/init_db.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U divergence -d divergence"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    container_name: divergence-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://divergence:divergence@db:5432/divergence
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      USE_MOCK_LLM: ${USE_MOCK_LLM:-false}
+      CORS_ORIGINS: "*"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/code/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  pg_data:

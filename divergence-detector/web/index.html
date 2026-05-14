@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DIVERGENCE — Realized vs Implied Liquidity Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@300;400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0c10;
+  --bg-elev: #0f1218;
+  --bg-elev-2: #151922;
+  --border: #1e242f;
+  --border-bright: #2a3240;
+  --text: #e8ecf2;
+  --text-dim: #8a93a6;
+  --text-faint: #525a6b;
+  --accent: rgb(51, 223, 225);
+  --accent-dim: rgba(51, 223, 225, 0.15);
+  --accent-faint: rgba(51, 223, 225, 0.06);
+  --warn: #ff8a4c;
+  --warn-dim: rgba(255, 138, 76, 0.12);
+  --danger: #ff5470;
+  --danger-dim: rgba(255, 84, 112, 0.12);
+  --serif: 'Fraunces', Georgia, serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --sans: 'Inter', system-ui, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background: var(--bg); color: var(--text); font-family: var(--sans);
+  font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.005em; overflow: hidden; height: 100vh;
+}
+body::before {
+  content: ''; position: fixed; inset: 0;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(51, 223, 225, 0.04), transparent 40%),
+    radial-gradient(circle at 85% 80%, rgba(255, 138, 76, 0.025), transparent 45%);
+  pointer-events: none; z-index: 0;
+}
+.app { display: grid; grid-template-columns: 220px 1fr; height: 100vh; position: relative; z-index: 1; }
+
+/* SIDEBAR */
+.sidebar { background: var(--bg-elev); border-right: 1px solid var(--border); padding: 24px 0; display: flex; flex-direction: column; }
+.brand { padding: 0 24px 28px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.brand-mark { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.brand-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 12px var(--accent); animation: pulse 2.4s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.85); } }
+.brand-name { font-family: var(--serif); font-size: 20px; font-weight: 500; letter-spacing: -0.02em; }
+.brand-tagline { font-family: var(--mono); font-size: 10px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.12em; padding-left: 18px; }
+.nav { display: flex; flex-direction: column; padding: 0 12px; gap: 2px; }
+.nav-section { font-family: var(--mono); font-size: 10px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.12em; padding: 16px 12px 8px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; color: var(--text-dim); font-size: 13px; border-radius: 6px; cursor: pointer; transition: all 0.15s ease; user-select: none; }
+.nav-item:hover { color: var(--text); background: var(--bg-elev-2); }
+.nav-item.active { color: var(--accent); background: var(--accent-faint); }
+.nav-item.active::before { content: ''; width: 3px; height: 14px; background: var(--accent); margin-left: -12px; margin-right: 9px; border-radius: 2px; }
+.nav-item .ico { width: 14px; height: 14px; opacity: 0.8; }
+.sidebar-footer { margin-top: auto; padding: 16px 24px; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 10px; color: var(--text-faint); display: flex; justify-content: space-between; align-items: center; }
+.status-live { display: flex; align-items: center; gap: 6px; }
+.status-live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; animation: pulse 2.4s ease-in-out infinite; }
+.status-live.online { color: var(--accent); }
+.status-live.online::before { background: var(--accent); }
+.status-live.offline { color: var(--warn); }
+.status-live.offline::before { background: var(--warn); animation: none; }
+
+/* MAIN */
+.main { overflow-y: auto; overflow-x: hidden; padding: 0; }
+.main::-webkit-scrollbar { width: 8px; }
+.main::-webkit-scrollbar-track { background: transparent; }
+.main::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 4px; }
+.topbar { position: sticky; top: 0; background: rgba(10, 12, 16, 0.85); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); padding: 14px 32px; display: flex; justify-content: space-between; align-items: center; z-index: 10; }
+.crumbs { font-family: var(--mono); font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.1em; }
+.crumbs span.current { color: var(--text); }
+.topbar-right { display: flex; align-items: center; gap: 20px; font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+.mode-badge { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.15em; padding: 3px 8px; border-radius: 3px; }
+.mode-badge.live { background: var(--accent-faint); color: var(--accent); border: 1px solid var(--accent-dim); }
+.mode-badge.demo { background: var(--warn-dim); color: var(--warn); border: 1px solid rgba(255, 138, 76, 0.3); }
+.clock { color: var(--accent); }
+
+/* PAGE HEAD */
+.page-head { padding: 36px 32px 24px; border-bottom: 1px solid var(--border); }
+.page-eyebrow { font-family: var(--mono); font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.18em; margin-bottom: 12px; }
+.page-title { font-family: var(--serif); font-size: 38px; font-weight: 400; letter-spacing: -0.025em; line-height: 1.05; margin-bottom: 12px; }
+.page-title em { font-style: italic; color: var(--accent); font-weight: 300; }
+.page-sub { color: var(--text-dim); font-size: 14px; max-width: 680px; }
+
+/* SECTION */
+.section { padding: 28px 32px; }
+.section-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 20px; }
+.section-title { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--text-faint); }
+.section-title .count { color: var(--accent); margin-left: 8px; }
+.filter-bar { display: flex; gap: 6px; }
+.filter-chip { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; padding: 5px 10px; background: var(--bg-elev); border: 1px solid var(--border); color: var(--text-dim); border-radius: 4px; cursor: pointer; transition: all 0.15s; }
+.filter-chip:hover { color: var(--text); border-color: var(--border-bright); }
+.filter-chip.active { color: var(--accent); border-color: var(--accent); background: var(--accent-faint); }
+
+/* DIVERGENCE GRID */
+.div-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+.div-card { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; cursor: pointer; transition: all 0.2s ease; position: relative; overflow: hidden; }
+.div-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--border-bright); transition: all 0.2s; }
+.div-card[data-sev="high-pos"]::before { background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+.div-card[data-sev="high-neg"]::before { background: var(--warn); box-shadow: 0 0 12px var(--warn); }
+.div-card[data-sev="extreme"]::before { background: var(--danger); box-shadow: 0 0 16px var(--danger); }
+.div-card:hover { border-color: var(--border-bright); transform: translateY(-1px); background: var(--bg-elev-2); }
+.div-card-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+.div-instrument { font-family: var(--mono); font-size: 13px; font-weight: 500; letter-spacing: 0.02em; color: var(--text); }
+.div-asset-class { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--text-faint); margin-top: 3px; }
+.div-regime { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; padding: 3px 8px; border-radius: 3px; background: var(--bg-elev-2); color: var(--text-dim); }
+.div-regime.stressed { color: var(--warn); background: var(--warn-dim); }
+.div-regime.dislocated { color: var(--danger); background: var(--danger-dim); }
+.div-score-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.div-score { font-family: var(--serif); font-size: 42px; font-weight: 400; letter-spacing: -0.03em; line-height: 1; font-feature-settings: 'tnum'; }
+.div-score.positive { color: var(--accent); }
+.div-score.negative { color: var(--warn); }
+.div-score.extreme { color: var(--danger); }
+.div-score-label { font-family: var(--mono); font-size: 10px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.1em; }
+.div-direction { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px dashed var(--border); }
+.div-breakdown { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.div-metric .lbl { font-family: var(--mono); font-size: 9px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+.div-metric .val { font-family: var(--mono); font-size: 16px; font-weight: 500; color: var(--text); }
+.div-metric .val.up { color: var(--warn); }
+.div-metric .val.dn { color: var(--accent); }
+
+/* SKELETON */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-elev) 0%, var(--bg-elev-2) 50%, var(--bg-elev) 100%);
+  background-size: 200% 100%; animation: shimmer 1.4s infinite linear;
+  border: 1px solid var(--border); border-radius: 8px; height: 200px;
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* DETAIL */
+.detail-layout { display: grid; grid-template-columns: 1fr 360px; gap: 0; }
+.detail-main { padding: 32px 32px 60px; border-right: 1px solid var(--border); }
+.detail-side { padding: 32px 28px; background: var(--bg-elev); }
+.detail-symbol { font-family: var(--mono); font-size: 14px; letter-spacing: 0.05em; color: var(--accent); margin-bottom: 8px; }
+.detail-headline { font-family: var(--serif); font-size: 32px; font-weight: 400; letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 8px; }
+.detail-meta { font-family: var(--mono); font-size: 11px; color: var(--text-faint); letter-spacing: 0.05em; margin-bottom: 32px; }
+.score-banner { background: linear-gradient(135deg, var(--bg-elev) 0%, var(--bg-elev-2) 100%); border: 1px solid var(--border); border-radius: 10px; padding: 28px 32px; display: grid; grid-template-columns: auto 1fr 1fr 1fr; gap: 32px; align-items: center; margin-bottom: 32px; position: relative; overflow: hidden; }
+.score-banner::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); }
+.score-big { font-family: var(--serif); font-size: 84px; font-weight: 300; letter-spacing: -0.04em; line-height: 0.9; font-feature-settings: 'tnum'; }
+.score-big.positive { color: var(--accent); }
+.score-big.negative { color: var(--warn); }
+.score-big.extreme { color: var(--danger); }
+.score-big-label { font-family: var(--mono); font-size: 10px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.15em; margin-top: 6px; }
+.banner-stat .v { font-family: var(--mono); font-size: 22px; font-weight: 500; letter-spacing: -0.01em; }
+.banner-stat .v.up { color: var(--warn); }
+.banner-stat .v.dn { color: var(--accent); }
+.banner-stat .l { font-family: var(--mono); font-size: 10px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.12em; margin-top: 4px; }
+
+/* NARRATIVE */
+.narrative-block { margin-bottom: 40px; }
+.narrative-head { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+.narrative-eyebrow { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.18em; color: var(--text-faint); }
+.narrative-badge { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.12em; padding: 3px 8px; background: var(--accent-faint); color: var(--accent); border-radius: 3px; border: 1px solid var(--accent-dim); }
+.narrative-body { font-family: var(--serif); font-size: 17px; line-height: 1.6; font-weight: 400; color: var(--text); letter-spacing: -0.005em; }
+.narrative-body p { margin-bottom: 18px; }
+.narrative-body p:last-child { margin-bottom: 0; }
+.narrative-meta { margin-top: 20px; padding-top: 16px; border-top: 1px dashed var(--border); font-family: var(--mono); font-size: 10px; color: var(--text-faint); display: flex; gap: 20px; flex-wrap: wrap; }
+.regen-btn { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; padding: 4px 10px; background: transparent; border: 1px solid var(--border-bright); color: var(--text-dim); border-radius: 3px; cursor: pointer; transition: all 0.15s; margin-left: auto; }
+.regen-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ANALOGS */
+.analog-list { display: flex; flex-direction: column; gap: 10px; }
+.analog-row { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; padding: 14px 16px; background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: all 0.15s; }
+.analog-row:hover { border-color: var(--border-bright); }
+.analog-date { font-family: var(--mono); font-size: 12px; color: var(--text); letter-spacing: 0.02em; }
+.analog-date .yr { color: var(--text-faint); }
+.analog-label { font-family: var(--serif); font-size: 15px; font-style: italic; color: var(--text-dim); }
+.analog-sim { font-family: var(--mono); font-size: 11px; color: var(--accent); background: var(--accent-faint); padding: 4px 9px; border-radius: 3px; }
+
+/* SIDE PANEL */
+.side-section { margin-bottom: 32px; }
+.side-title { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--text-faint); margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.side-stat { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; }
+.side-stat .k { font-family: var(--sans); font-size: 12px; color: var(--text-dim); }
+.side-stat .v { font-family: var(--mono); font-size: 12px; color: var(--text); }
+.side-stat .v.acc { color: var(--accent); }
+.side-stat .v.warn { color: var(--warn); }
+
+/* ANALOG FINDER */
+.analog-query {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1fr auto;
+  gap: 14px;
+  align-items: end;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 22px;
+}
+.analog-field { display: flex; flex-direction: column; gap: 6px; }
+.analog-field label {
+  font-family: var(--mono); font-size: 10px; color: var(--text-faint);
+  text-transform: uppercase; letter-spacing: 0.12em;
+}
+.analog-field select,
+.analog-field input {
+  background: var(--bg);
+  border: 1px solid var(--border-bright);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.analog-field select:focus,
+.analog-field input:focus { border-color: var(--accent); }
+.analog-field select { appearance: none; cursor: pointer; padding-right: 30px;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a93a6' stroke-width='1.5'%3e%3cpath d='M6 9l6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat; background-position: right 10px center; background-size: 16px;
+}
+.analog-search-btn {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  font-family: var(--mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 500;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  height: 42px;
+}
+.analog-search-btn:hover { box-shadow: 0 0 16px var(--accent-dim); transform: translateY(-1px); }
+.analog-search-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.analog-query-summary {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 24px;
+  align-items: center;
+}
+.analog-query-summary .lead {
+  font-family: var(--serif); font-size: 16px; color: var(--text);
+}
+.analog-query-summary .lead .sym { color: var(--accent); font-family: var(--mono); font-size: 13px; letter-spacing: 0.04em; }
+.analog-query-summary .stat .v { font-family: var(--mono); font-size: 15px; font-weight: 500; }
+.analog-query-summary .stat .v.warn { color: var(--warn); }
+.analog-query-summary .stat .v.acc { color: var(--accent); }
+.analog-query-summary .stat .l { font-family: var(--mono); font-size: 9px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.12em; margin-top: 2px; }
+
+.analog-result-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.analog-result-row {
+  display: grid;
+  grid-template-columns: 100px 1fr auto auto;
+  gap: 18px;
+  align-items: center;
+  padding: 16px 20px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.analog-result-row:hover { border-color: var(--accent-dim); transform: translateX(2px); }
+.analog-result-row .rank {
+  font-family: var(--serif); font-size: 28px; color: var(--text-faint); font-weight: 300;
+  font-feature-settings: 'tnum';
+}
+.analog-result-row .meta { display: flex; flex-direction: column; gap: 4px; }
+.analog-result-row .date { font-family: var(--mono); font-size: 13px; color: var(--text); letter-spacing: 0.03em; }
+.analog-result-row .label { font-family: var(--serif); font-size: 15px; font-style: italic; color: var(--text-dim); }
+.analog-result-row .score { font-family: var(--mono); font-size: 14px; }
+.analog-result-row .score.warn { color: var(--warn); }
+.analog-result-row .score.acc { color: var(--accent); }
+.analog-result-row .sim {
+  font-family: var(--mono); font-size: 13px; color: var(--accent);
+  background: var(--accent-faint); padding: 6px 12px; border-radius: 4px;
+  border: 1px solid var(--accent-dim);
+}
+
+/* SUBSCRIPTIONS */
+.subs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
+.sub-card { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px; padding: 20px 22px; transition: all 0.15s; }
+.sub-card:hover { border-color: var(--border-bright); }
+.sub-card.active-card { border-color: var(--accent-dim); background: linear-gradient(135deg, var(--bg-elev) 0%, rgba(51, 223, 225, 0.02) 100%); }
+.sub-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+.sub-name { font-family: var(--serif); font-size: 19px; font-weight: 500; letter-spacing: -0.01em; }
+.sub-tagline { font-family: var(--mono); font-size: 10px; color: var(--text-faint); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.1em; }
+.sub-toggle { width: 32px; height: 18px; background: var(--bg-elev-2); border-radius: 10px; position: relative; cursor: pointer; border: 1px solid var(--border); transition: all 0.2s; flex-shrink: 0; }
+.sub-toggle.on { background: var(--accent-dim); border-color: var(--accent); }
+.sub-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; background: var(--text-dim); border-radius: 50%; transition: all 0.2s ease; }
+.sub-toggle.on::after { left: 16px; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.sub-conditions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.cond-tag { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; padding: 4px 9px; background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 3px; color: var(--text-dim); }
+.cond-tag.accent { color: var(--accent); border-color: var(--accent-dim); }
+.cond-tag.warn { color: var(--warn); border-color: rgba(255, 138, 76, 0.3); }
+
+/* TOAST */
+.toast-stack { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 12px; z-index: 100; max-width: 400px; }
+.toast { background: var(--bg-elev); border: 1px solid var(--accent-dim); border-radius: 8px; padding: 16px 20px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 24px rgba(51, 223, 225, 0.15); animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes slideIn { from { transform: translateX(420px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.toast-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.toast-title { font-family: var(--mono); font-size: 10px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.15em; }
+.toast-close { color: var(--text-faint); cursor: pointer; font-size: 14px; }
+.toast-body { font-family: var(--serif); font-size: 14px; color: var(--text); line-height: 1.4; }
+.toast-body .score { font-family: var(--mono); color: var(--warn); font-weight: 500; }
+
+/* EMPTY/ERROR STATES */
+.empty { text-align: center; padding: 48px; color: var(--text-faint); font-family: var(--serif); font-style: italic; font-size: 16px; }
+
+/* VIEWS */
+.view { display: none; }
+.view.active { display: block; }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.view.active > * { animation: fadeUp 0.5s ease backwards; }
+.view.active > *:nth-child(1) { animation-delay: 0.02s; }
+.view.active > *:nth-child(2) { animation-delay: 0.08s; }
+.view.active > *:nth-child(3) { animation-delay: 0.14s; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <div class="brand-dot"></div>
+        <div class="brand-name">Divergence</div>
+      </div>
+      <div class="brand-tagline">realized · vs · implied</div>
+    </div>
+    <div class="nav">
+      <div class="nav-section">Surveillance</div>
+      <div class="nav-item active" data-view="dashboard">
+        <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13h12M3 13V8m3 5V5m3 8v-6m3 6V3"/></svg>
+        Live Dashboard
+      </div>
+      <div class="nav-item" data-view="subs">
+        <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5h10M3 8h10M3 11h7"/></svg>
+        Subscriptions
+      </div>
+
+      <div class="nav-section">Research</div>
+      <div class="nav-item" data-view="analog">
+        <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="4"/><path d="M10 10l3 3"/></svg>
+        Analog Finder
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <span class="status-live" id="status-pill">CONNECTING</span>
+      <span>v0.7.2</span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="crumbs" id="crumbs"><span>Surveillance</span> / <span class="current">Live Dashboard</span></div>
+      <div class="topbar-right">
+        <span class="mode-badge" id="mode-badge">…</span>
+        <span class="clock" id="clock">--:--:--</span>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="view active" id="view-dashboard">
+      <div class="page-head">
+        <div class="page-eyebrow" id="dash-eyebrow">Loading…</div>
+        <h1 class="page-title" id="dash-title">Reading current liquidity conditions…</h1>
+        <p class="page-sub" id="dash-sub">Fetching latest divergence events from the API.</p>
+      </div>
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">Active Divergences <span class="count" id="div-count">—</span></div>
+          <div class="filter-bar" id="dash-filter">
+            <div class="filter-chip active" data-ac="">ALL</div>
+            <div class="filter-chip" data-ac="rates">RATES</div>
+            <div class="filter-chip" data-ac="mbs">MBS</div>
+            <div class="filter-chip" data-ac="credit">CREDIT</div>
+            <div class="filter-chip" data-ac="swaps">SWAPS</div>
+          </div>
+        </div>
+        <div class="div-grid" id="div-grid">
+          <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DETAIL -->
+    <div class="view" id="view-detail">
+      <div class="detail-layout">
+        <div class="detail-main" id="detail-main">
+          <div class="empty">Loading event…</div>
+        </div>
+        <aside class="detail-side" id="detail-side"></aside>
+      </div>
+    </div>
+
+    <!-- SUBSCRIPTIONS -->
+    <div class="view" id="view-subs">
+      <div class="page-head">
+        <div class="page-eyebrow">Alert Conditions</div>
+        <h1 class="page-title">Your <em>subscriptions.</em></h1>
+        <p class="page-sub">Composable alert rules — direction, magnitude floor, asset class, channel. The engine routes any matching divergence event to your configured destination.</p>
+      </div>
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">Active <span class="count" id="subs-count">—</span></div>
+        </div>
+        <div class="subs-grid" id="subs-grid">
+          <div class="skeleton" style="height: 180px;"></div>
+          <div class="skeleton" style="height: 180px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALOG FINDER -->
+    <div class="view" id="view-analog">
+      <div class="page-head">
+        <div class="page-eyebrow">Research · pgvector cosine search</div>
+        <h1 class="page-title">Find historical days that <em>rhyme</em> with any moment.</h1>
+        <p class="page-sub">Pick an instrument and a date. The search returns the K nearest historical events by cross-asset feature similarity, excluding days within 30 of the query. Useful for stress-testing a current read against the closest prior analog before acting on it.</p>
+      </div>
+
+      <div class="section">
+        <div class="analog-query" id="analog-query">
+          <div class="analog-field">
+            <label>Instrument</label>
+            <select id="analog-instrument"></select>
+          </div>
+          <div class="analog-field">
+            <label>Target date</label>
+            <input type="date" id="analog-date">
+          </div>
+          <div class="analog-field">
+            <label>K nearest</label>
+            <select id="analog-k">
+              <option value="3">3</option>
+              <option value="5" selected>5</option>
+              <option value="10">10</option>
+              <option value="20">20</option>
+            </select>
+          </div>
+          <button class="analog-search-btn" id="analog-search-btn">Search →</button>
+        </div>
+
+        <div id="analog-results" style="margin-top: 28px;">
+          <div class="empty">Choose an instrument and date, then run the search.</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast-stack" id="toasts"></div>
+
+<script>
+// ============================================================
+// CONFIG — change these if your API isn't on localhost:8000
+// ============================================================
+const API_BASE = window.DIVERGENCE_API || 'http://localhost:8000';
+const WS_BASE  = API_BASE.replace(/^http/, 'ws');
+const API_KEY  = window.DIVERGENCE_API_KEY || 'demo-api-key-change-me';
+
+// ============================================================
+// State
+// ============================================================
+const state = {
+  online: false,        // is the API reachable?
+  mode: 'demo',         // 'live' or 'demo'
+  divergences: [],
+  filter: '',
+  ws: null,
+};
+
+// ============================================================
+// API client
+// ============================================================
+const api = {
+  async health() {
+    const r = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(2000) });
+    if (!r.ok) throw new Error('health failed');
+    return r.json();
+  },
+  async current(assetClass = '') {
+    const url = new URL(`${API_BASE}/divergence/current`);
+    if (assetClass) url.searchParams.set('asset_class', assetClass);
+    url.searchParams.set('limit', '20');
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('current failed');
+    return r.json();
+  },
+  async event(id)     { const r = await fetch(`${API_BASE}/divergence/${id}`); return r.json(); },
+  async narrative(id, force = false) {
+    const r = await fetch(`${API_BASE}/divergence/${id}/narrative?force_regenerate=${force}`, { method: 'POST' });
+    return r.json();
+  },
+  async analogs(id)   { const r = await fetch(`${API_BASE}/divergence/${id}/analogs?k=5`); return r.json(); },
+  async subscriptions() {
+    const r = await fetch(`${API_BASE}/subscriptions/`, { headers: { 'X-API-Key': API_KEY } });
+    if (!r.ok) throw new Error('subs failed');
+    return r.json();
+  },
+  async toggleSub(id, active) {
+    const r = await fetch(`${API_BASE}/subscriptions/${id}`, {
+      method: 'PATCH',
+      headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active }),
+    });
+    return r.json();
+  },
+  async instruments() {
+    const r = await fetch(`${API_BASE}/instruments`);
+    if (!r.ok) throw new Error('instruments failed');
+    return r.json();
+  },
+  async searchAnalogs(symbol, targetDate, k = 5) {
+    const url = new URL(`${API_BASE}/analogs/search`);
+    url.searchParams.set('instrument_symbol', symbol);
+    url.searchParams.set('target_date', targetDate);
+    url.searchParams.set('k', String(k));
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('analog search failed');
+    return r.json();
+  },
+};
+
+// ============================================================
+// Mock fallback data — used when the API isn't reachable.
+// Same shape as the live API responses.
+// ============================================================
+const MOCK = {
+  divergences: [
+    { id: 1, ts: new Date().toISOString(), instrument_id: 3, instrument_symbol: 'FNCL_30Y', instrument_asset_class: 'mbs', implied_z: 0.21, realized_z: 3.63, divergence_score: -3.42, regime_label: 'dislocated', lookback_days: 252 },
+    { id: 2, ts: new Date().toISOString(), instrument_id: 1, instrument_symbol: 'UST_10Y', instrument_asset_class: 'rates', implied_z: 2.41, realized_z: 0.23, divergence_score: 2.18, regime_label: 'stressed', lookback_days: 252 },
+    { id: 3, ts: new Date().toISOString(), instrument_id: 4, instrument_symbol: 'CDX_IG', instrument_asset_class: 'credit', implied_z: 2.32, realized_z: 0.38, divergence_score: 1.94, regime_label: 'stressed', lookback_days: 252 },
+    { id: 4, ts: new Date().toISOString(), instrument_id: 6, instrument_symbol: 'USD_SW_5Y', instrument_asset_class: 'swaps', implied_z: 2.18, realized_z: 0.15, divergence_score: 2.03, regime_label: 'stressed', lookback_days: 252 },
+    { id: 5, ts: new Date().toISOString(), instrument_id: 2, instrument_symbol: 'UST_30Y', instrument_asset_class: 'rates', implied_z: 0.58, realized_z: 0.27, divergence_score: 0.31, regime_label: 'calm', lookback_days: 252 },
+    { id: 6, ts: new Date().toISOString(), instrument_id: 5, instrument_symbol: 'CDX_HY', instrument_asset_class: 'credit', implied_z: 1.12, realized_z: 0.28, divergence_score: 0.84, regime_label: 'calm', lookback_days: 252 },
+  ],
+  analogs: [
+    { event_id: 101, ts: '2026-01-09T14:00:00Z', instrument_symbol: 'FNCL_30Y', divergence_score: -3.51, regime_label: 'dislocated', label: 'GSE $200B MBS purchase order', similarity: 0.91 },
+    { event_id: 102, ts: '2023-03-13T14:00:00Z', instrument_symbol: 'FNCL_30Y', divergence_score: -2.84, regime_label: 'dislocated', label: 'SVB weekend — rates flight', similarity: 0.66 },
+    { event_id: 103, ts: '2020-03-12T14:00:00Z', instrument_symbol: 'FNCL_30Y', divergence_score: -4.12, regime_label: 'dislocated', label: 'COVID liquidity dislocation', similarity: 0.54 },
+  ],
+  narrative: {
+    body: `The mortgage market is executing under far more strain than option-implied volatility suggests. FNCL 30Y T-Cost printed 4.2 bps today against a one-year median of 0.72 bps — a +487% dislocation — while MOVE-implied vol sits within its monthly range. Composite width on benchmark size widened to 2.1 bps, more than three sigma above trend. Treasuries, by contrast, executed at +0.18σ on T-Cost: orderly.\n\nThe closest historical analog is January 9, 2026, when the Trump administration's order for Fannie Mae and Freddie Mac to purchase $200B in MBS triggered a similar one-sided spike. Today's pattern matches that profile at 0.91 cosine similarity, suggesting demand-side anticipation rather than broad market stress.\n\nThis is the asymmetric setup that matters: execution stressed, implied calm. Historically the dangerous configuration. Tomorrow's invalidators are MOVE catching up or Treasury T-Cost beginning to drift toward MBS.`,
+    model: 'mock',
+    prompt_version: 'v3-2026-05',
+    latency_ms: 0,
+    historical_analogs: [],
+  },
+  subscriptions: [
+    { id: 1, name: 'Hidden execution stress', tagline: 'Negative divergences · the dangerous setup', direction: 'negative', min_abs_score: 2.5, asset_classes: null, regime_labels: ['dislocated'], channel: 'websocket', cooldown_min: 60, active: true },
+    { id: 2, name: 'Rates fade signals', tagline: 'Markets pricing more fear than execution', direction: 'positive', min_abs_score: 2.0, asset_classes: ['rates', 'swaps'], channel: 'webhook', cooldown_min: 120, active: true },
+    { id: 3, name: 'Credit early warning', tagline: 'CDX-specific · paused', direction: 'either', min_abs_score: 1.8, asset_classes: ['credit'], channel: 'websocket', cooldown_min: 240, active: false },
+  ],
+  instruments: [
+    { id: 1, symbol: 'UST_10Y',   asset_class: 'rates',  display_name: 'UST 10Y' },
+    { id: 2, symbol: 'UST_30Y',   asset_class: 'rates',  display_name: 'UST 30Y' },
+    { id: 3, symbol: 'FNCL_30Y',  asset_class: 'mbs',    display_name: 'FNCL 30Y · TBA' },
+    { id: 4, symbol: 'CDX_IG',    asset_class: 'credit', display_name: 'CDX Investment Grade' },
+    { id: 5, symbol: 'CDX_HY',    asset_class: 'credit', display_name: 'CDX High Yield' },
+    { id: 6, symbol: 'USD_SW_5Y', asset_class: 'swaps',  display_name: 'USD Swap 5Y' },
+  ],
+  analogSearchResults: [
+    { event_id: 201, ts: '2026-01-09T14:00:00Z', instrument_symbol: 'FNCL_30Y', divergence_score: -3.51, regime_label: 'dislocated', label: 'GSE $200B MBS purchase order', similarity: 0.93 },
+    { event_id: 202, ts: '2024-08-14T14:00:00Z', instrument_symbol: 'FNCL_30Y', divergence_score: -2.18, regime_label: 'stressed',   label: 'Pre-Jackson Hole MBS basis squeeze', similarity: 0.81 },
+    { event_id: 203, ts: '2023-03-13T14:00:00Z', instrument_symbol: 'FNCL_30Y', divergence_score: -2.84, regime_label: 'dislocated', label: 'SVB weekend — rates flight', similarity: 0.66 },
+    { event_id: 204, ts: '2022-09-26T14:00:00Z', instrument_symbol: 'FNCL_30Y', divergence_score: -2.04, regime_label: 'stressed',   label: 'UK gilt crisis spillover', similarity: 0.61 },
+    { event_id: 205, ts: '2020-03-12T14:00:00Z', instrument_symbol: 'FNCL_30Y', divergence_score: -4.12, regime_label: 'dislocated', label: 'COVID liquidity dislocation', similarity: 0.54 },
+  ],
+};
+
+// ============================================================
+// Connectivity check + mode setting
+// ============================================================
+async function probeAPI() {
+  try {
+    await api.health();
+    state.online = true;
+    state.mode = 'live';
+  } catch {
+    state.online = false;
+    state.mode = 'demo';
+  }
+  document.getElementById('mode-badge').textContent = state.mode === 'live' ? 'LIVE API' : 'DEMO · MOCK DATA';
+  document.getElementById('mode-badge').className = `mode-badge ${state.mode === 'live' ? 'live' : 'demo'}`;
+  const status = document.getElementById('status-pill');
+  status.textContent = state.online ? 'LIVE' : 'OFFLINE';
+  status.className = `status-live ${state.online ? 'online' : 'offline'}`;
+}
+
+// ============================================================
+// Dashboard
+// ============================================================
+async function loadDashboard() {
+  const grid = document.getElementById('div-grid');
+
+  try {
+    const data = state.online
+      ? await api.current(state.filter)
+      : MOCK.divergences.filter(d => !state.filter || d.instrument_asset_class === state.filter);
+    state.divergences = data;
+    renderDashHead(data);
+    renderGrid(data);
+    document.getElementById('div-count').textContent = String(data.length).padStart(2, '0');
+  } catch (e) {
+    grid.innerHTML = `<div class="empty">Failed to load: ${e.message}</div>`;
+  }
+}
+
+function renderDashHead(items) {
+  // Generate the editorial framing from the actual data
+  const negative = items.filter(d => d.divergence_score < -1.5);
+  const positive = items.filter(d => d.divergence_score > 1.5);
+
+  const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  document.getElementById('dash-eyebrow').textContent = `${today} · ${items.length} instruments tracked`;
+
+  let title, sub;
+  if (negative.length > 0 && positive.length > 0) {
+    const ext = negative.find(d => d.divergence_score < -2.5);
+    if (ext) {
+      title = `Execution is dislocating in <em>${ext.instrument_symbol}</em> against orderly cross-asset signals.`;
+    } else {
+      title = `Markets are pricing more stress than <em>execution validates</em>.`;
+    }
+    sub = `${positive.length} positive divergences (markets pricing fear) · ${negative.length} negative divergences (execution stress without implied repricing).`;
+  } else if (positive.length > 0) {
+    title = `Markets pricing more stress than <em>execution validates</em>.`;
+    sub = `${positive.length} positive divergences detected. Composite implied stress elevated while realized cost data remains orderly.`;
+  } else if (negative.length > 0) {
+    title = `Execution stressed · <em>implied signals calm.</em>`;
+    sub = `${negative.length} negative divergences — historically the dangerous configuration. Watch for implied repricing into realized over coming sessions.`;
+  } else {
+    title = `Liquidity is <em>orderly</em> across tracked instruments.`;
+    sub = `No active divergences exceeding the 1.5σ threshold. Composite z-scores compressed near zero on both sides.`;
+  }
+  document.getElementById('dash-title').innerHTML = title;
+  document.getElementById('dash-sub').textContent = sub;
+}
+
+function renderGrid(items) {
+  const grid = document.getElementById('div-grid');
+  if (items.length === 0) {
+    grid.innerHTML = '<div class="empty">No divergences match the current filter.</div>';
+    return;
+  }
+  grid.innerHTML = items.map(d => {
+    const score = d.divergence_score;
+    const scoreClass = Math.abs(score) > 2.5 ? 'extreme' : (score < 0 ? 'negative' : 'positive');
+    const sevAttr = Math.abs(score) > 2.5 ? 'extreme' : (score > 1.8 ? 'high-pos' : (score < -1.8 ? 'high-neg' : ''));
+    const dir = score < -1.5
+      ? 'Execution stressed · Implied calm'
+      : score > 1.5
+      ? 'Markets pricing fear · Execution orderly'
+      : 'Within tolerance';
+
+    return `
+      <div class="div-card" data-sev="${sevAttr}" data-id="${d.id}">
+        <div class="div-card-head">
+          <div>
+            <div class="div-instrument">${d.instrument_symbol}</div>
+            <div class="div-asset-class">${d.instrument_asset_class}</div>
+          </div>
+          <div class="div-regime ${d.regime_label}">${d.regime_label}</div>
+        </div>
+        <div class="div-score-row">
+          <div class="div-score ${scoreClass}">${score > 0 ? '+' : ''}${score.toFixed(2)}</div>
+          <div class="div-score-label">σ divergence</div>
+        </div>
+        <div class="div-direction">${dir}</div>
+        <div class="div-breakdown">
+          <div class="div-metric">
+            <div class="lbl">Implied Z</div>
+            <div class="val ${d.implied_z > 1.5 ? 'up' : ''}">${d.implied_z > 0 ? '+' : ''}${d.implied_z.toFixed(2)}</div>
+          </div>
+          <div class="div-metric">
+            <div class="lbl">Realized Z</div>
+            <div class="val ${d.realized_z > 1.5 ? 'up' : ''}">${d.realized_z > 0 ? '+' : ''}${d.realized_z.toFixed(2)}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  grid.querySelectorAll('.div-card').forEach(c => {
+    c.addEventListener('click', () => loadDetail(+c.dataset.id));
+  });
+}
+
+// ============================================================
+// Detail view
+// ============================================================
+async function loadDetail(eventId) {
+  switchView('detail');
+  const main = document.getElementById('detail-main');
+  const side = document.getElementById('detail-side');
+  main.innerHTML = '<div class="empty">Loading event…</div>';
+  side.innerHTML = '';
+
+  try {
+    let event, narrative, analogs;
+    if (state.online) {
+      [event, narrative, analogs] = await Promise.all([
+        api.event(eventId),
+        api.narrative(eventId),
+        api.analogs(eventId),
+      ]);
+    } else {
+      event = state.divergences.find(d => d.id === eventId) || MOCK.divergences[0];
+      narrative = MOCK.narrative;
+      analogs = MOCK.analogs;
+    }
+    renderDetail(event, narrative, analogs);
+  } catch (e) {
+    main.innerHTML = `<div class="empty">Failed to load: ${e.message}</div>`;
+  }
+}
+
+function renderDetail(event, narrative, analogs) {
+  const score = event.divergence_score;
+  const scoreClass = Math.abs(score) > 2.5 ? 'extreme' : (score < 0 ? 'negative' : 'positive');
+
+  let headline;
+  if (score < -2.5) {
+    headline = `${event.instrument_symbol} execution costs spike against orderly cross-asset backdrop.`;
+  } else if (score > 2.5) {
+    headline = `${event.instrument_symbol} priced for stress · execution data shows liquidity orderly.`;
+  } else if (Math.abs(score) > 1.5) {
+    headline = `${event.instrument_symbol} ${score < 0 ? 'executing under strain' : 'pricing elevated stress'}.`;
+  } else {
+    headline = `${event.instrument_symbol} liquidity within historical tolerance.`;
+  }
+
+  const formattedNarrative = narrative.body
+    .split('\n\n')
+    .map(p => `<p>${p}</p>`)
+    .join('');
+
+  document.getElementById('crumbs').innerHTML = `<span>Surveillance</span> / <span>Live Dashboard</span> / <span class="current">Event #${event.id}</span>`;
+
+  document.getElementById('detail-main').innerHTML = `
+    <div class="detail-symbol">${event.instrument_symbol} · ${(event.instrument_asset_class || '').toUpperCase()}</div>
+    <h1 class="detail-headline">${headline}</h1>
+    <div class="detail-meta">EVENT #${event.id} · ${new Date(event.ts).toISOString().slice(0, 19).replace('T', ' ')} · LOOKBACK ${event.lookback_days}D</div>
+
+    <div class="score-banner">
+      <div>
+        <div class="score-big ${scoreClass}">${score > 0 ? '+' : ''}${score.toFixed(2)}</div>
+        <div class="score-big-label">Divergence z-score</div>
+      </div>
+      <div class="banner-stat">
+        <div class="v ${event.implied_z > 1.5 ? 'up' : ''}">${event.implied_z > 0 ? '+' : ''}${event.implied_z.toFixed(2)}</div>
+        <div class="l">Implied stress z</div>
+      </div>
+      <div class="banner-stat">
+        <div class="v ${event.realized_z > 1.5 ? 'up' : ''}">${event.realized_z > 0 ? '+' : ''}${event.realized_z.toFixed(2)}</div>
+        <div class="l">Realized stress z</div>
+      </div>
+      <div class="banner-stat">
+        <div class="v" style="color: ${event.regime_label === 'dislocated' ? 'var(--danger)' : event.regime_label === 'stressed' ? 'var(--warn)' : 'var(--accent)'};">${event.regime_label.toUpperCase()}</div>
+        <div class="l">Regime</div>
+      </div>
+    </div>
+
+    <div class="narrative-block">
+      <div class="narrative-head">
+        <div class="narrative-eyebrow">AI Narrative</div>
+        <div class="narrative-badge">${narrative.model} · ${narrative.prompt_version}</div>
+        <button class="regen-btn" id="regen-btn">↻ Regenerate</button>
+      </div>
+      <div class="narrative-body">${formattedNarrative}</div>
+      <div class="narrative-meta">
+        <span>GENERATED ${narrative.generated_at ? new Date(narrative.generated_at).toISOString().slice(11, 19) : '—'}</span>
+        <span>·</span>
+        <span>LATENCY ${narrative.latency_ms || 0}ms</span>
+        <span>·</span>
+        <span>${analogs.length} ANALOGS</span>
+      </div>
+    </div>
+
+    <div class="section" style="padding: 0;">
+      <div class="section-head">
+        <div class="section-title">Historical Analogs <span class="count">${String(analogs.length).padStart(2, '0')}</span></div>
+        <div class="filter-bar"><div class="filter-chip">PGVECTOR · COSINE</div></div>
+      </div>
+      <div class="analog-list">
+        ${analogs.length === 0 ? '<div class="empty">No analogs found.</div>' : analogs.map(a => {
+          const dt = new Date(a.ts);
+          const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          return `
+            <div class="analog-row">
+              <div class="analog-date">${monthNames[dt.getMonth()]} ${dt.getDate()} <span class="yr">${dt.getFullYear()}</span></div>
+              <div class="analog-label">${a.label || '(unlabeled event)'}</div>
+              <div class="analog-sim">${a.similarity.toFixed(2)} · cos</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+
+  // Side panel
+  document.getElementById('detail-side').innerHTML = `
+    <div class="side-section">
+      <div class="side-title">Z-Score Components</div>
+      <div class="side-stat"><span class="k">Implied composite</span><span class="v ${event.implied_z > 1.5 ? 'warn' : 'acc'}">${event.implied_z > 0 ? '+' : ''}${event.implied_z.toFixed(2)}σ</span></div>
+      <div class="side-stat"><span class="k">Realized composite</span><span class="v ${event.realized_z > 1.5 ? 'warn' : 'acc'}">${event.realized_z > 0 ? '+' : ''}${event.realized_z.toFixed(2)}σ</span></div>
+      <div class="side-stat"><span class="k">Divergence</span><span class="v ${Math.abs(score) > 2.5 ? 'warn' : ''}">${score > 0 ? '+' : ''}${score.toFixed(2)}σ</span></div>
+      <div class="side-stat"><span class="k">Lookback window</span><span class="v">${event.lookback_days} days</span></div>
+    </div>
+    <div class="side-section">
+      <div class="side-title">Regime Classification</div>
+      <div class="side-stat"><span class="k">Current</span><span class="v ${event.regime_label === 'dislocated' ? 'warn' : 'acc'}">${event.regime_label}</span></div>
+      <div class="side-stat"><span class="k">Threshold</span><span class="v">|div| > 2.5σ</span></div>
+    </div>
+    <div class="side-section">
+      <div class="side-title">Interpretation</div>
+      <div style="font-family: var(--serif); font-style: italic; font-size: 14px; color: var(--text-dim); line-height: 1.5;">
+        ${score < -1.5 ? 'Execution stressed while implied signals stay calm. Historically the more dangerous setup — watch for implied repricing.' :
+          score > 1.5 ? 'Markets pricing more fear than execution validates. Historically a fade signal, but not always.' :
+          'Implied and realized signals aligned. No actionable divergence.'}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('regen-btn')?.addEventListener('click', async () => {
+    if (!state.online) {
+      alert('Regenerate requires the live API.');
+      return;
+    }
+    const btn = document.getElementById('regen-btn');
+    btn.textContent = '↻ Generating…';
+    btn.disabled = true;
+    try {
+      const n = await api.narrative(event.id, true);
+      renderDetail(event, n, analogs);
+    } catch (e) {
+      btn.textContent = '↻ Failed · retry';
+      btn.disabled = false;
+    }
+  });
+}
+
+// ============================================================
+// Subscriptions
+// ============================================================
+async function loadSubscriptions() {
+  const grid = document.getElementById('subs-grid');
+  try {
+    const subs = state.online ? await api.subscriptions() : MOCK.subscriptions;
+    document.getElementById('subs-count').textContent = String(subs.length).padStart(2, '0');
+    renderSubs(subs);
+  } catch (e) {
+    grid.innerHTML = `<div class="empty">Failed to load: ${e.message}</div>`;
+  }
+}
+
+function renderSubs(subs) {
+  const grid = document.getElementById('subs-grid');
+  grid.innerHTML = subs.map(s => {
+    const tagline = s.tagline || (
+      s.direction === 'negative' ? 'Hidden execution stress · the dangerous setup' :
+      s.direction === 'positive' ? 'Markets pricing more fear than execution' :
+      'Bidirectional alert'
+    );
+    const conditions = [
+      `<div class="cond-tag ${s.direction === 'negative' ? 'warn' : s.direction === 'positive' ? 'accent' : ''}">DIR · ${s.direction.toUpperCase()}</div>`,
+      `<div class="cond-tag">|Z| ≥ ${s.min_abs_score}</div>`,
+      s.asset_classes?.length ? `<div class="cond-tag">${s.asset_classes.join(' · ').toUpperCase()}</div>` : `<div class="cond-tag">ALL ASSETS</div>`,
+      s.regime_labels?.length ? `<div class="cond-tag warn">REGIME · ${s.regime_labels.join(' · ').toUpperCase()}</div>` : '',
+      `<div class="cond-tag">COOLDOWN · ${s.cooldown_min}m</div>`,
+      `<div class="cond-tag accent">→ ${s.channel.toUpperCase()}</div>`,
+    ].filter(Boolean).join('');
+
+    return `
+      <div class="sub-card ${s.active ? 'active-card' : ''}" data-id="${s.id}">
+        <div class="sub-head">
+          <div>
+            <div class="sub-name">${s.name}</div>
+            <div class="sub-tagline">${tagline}</div>
+          </div>
+          <div class="sub-toggle ${s.active ? 'on' : ''}" data-id="${s.id}" data-active="${s.active}"></div>
+        </div>
+        <div class="sub-conditions">${conditions}</div>
+      </div>
+    `;
+  }).join('');
+
+  grid.querySelectorAll('.sub-toggle').forEach(t => {
+    t.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = +t.dataset.id;
+      const newActive = t.dataset.active !== 'true';
+      t.classList.toggle('on', newActive);
+      t.dataset.active = newActive;
+      t.closest('.sub-card').classList.toggle('active-card', newActive);
+      if (state.online) {
+        try { await api.toggleSub(id, newActive); }
+        catch (err) { console.error('Toggle failed', err); }
+      }
+    });
+  });
+}
+
+// ============================================================
+// Analog Finder
+// ============================================================
+let analogFinderInit = false;
+
+async function loadAnalogFinder() {
+  if (!analogFinderInit) {
+    const select = document.getElementById('analog-instrument');
+    try {
+      const instruments = state.online ? await api.instruments() : MOCK.instruments;
+      select.innerHTML = instruments
+        .map(i => `<option value="${i.symbol}">${i.display_name} · ${i.asset_class}</option>`)
+        .join('');
+      // Default to FNCL_30Y if available, else first
+      const fncl = instruments.find(i => i.symbol === 'FNCL_30Y');
+      if (fncl) select.value = 'FNCL_30Y';
+    } catch (e) {
+      select.innerHTML = '<option>Failed to load instruments</option>';
+    }
+    // Default the date to today
+    const today = new Date().toISOString().slice(0, 10);
+    document.getElementById('analog-date').value = today;
+    analogFinderInit = true;
+
+    document.getElementById('analog-search-btn').addEventListener('click', runAnalogSearch);
+  }
+}
+
+async function runAnalogSearch() {
+  const btn = document.getElementById('analog-search-btn');
+  const symbol = document.getElementById('analog-instrument').value;
+  const dateStr = document.getElementById('analog-date').value;
+  const k = +document.getElementById('analog-k').value;
+  const results = document.getElementById('analog-results');
+
+  if (!symbol || !dateStr) {
+    results.innerHTML = '<div class="empty">Pick an instrument and date first.</div>';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Searching…';
+  results.innerHTML = '<div class="empty">Searching pgvector index…</div>';
+
+  try {
+    const targetIso = new Date(dateStr + 'T14:00:00Z').toISOString();
+    let analogs;
+    if (state.online) {
+      analogs = await api.searchAnalogs(symbol, targetIso, k);
+    } else {
+      // Mock: slice to requested K
+      analogs = MOCK.analogSearchResults.slice(0, k);
+    }
+    renderAnalogResults(symbol, dateStr, analogs);
+  } catch (e) {
+    results.innerHTML = `<div class="empty">Search failed: ${e.message}. If no event exists for that date, try a date with scored data (last 30 days in seeded data).</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Search →';
+  }
+}
+
+function renderAnalogResults(symbol, queryDate, analogs) {
+  const results = document.getElementById('analog-results');
+
+  if (analogs.length === 0) {
+    results.innerHTML = `<div class="empty">No analogs found for ${symbol} on ${queryDate}. The date may be outside the scored range, or the feature vector may not be populated. Try a date in the last month.</div>`;
+    return;
+  }
+
+  // Build a summary card for the query, using the top match as a proxy
+  // for "what this day looks like" (the closest match shares the feature shape)
+  const closest = analogs[0];
+  const queryDateFmt = new Date(queryDate + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  results.innerHTML = `
+    <div class="analog-query-summary">
+      <div class="lead">
+        Searching for analogs to <span class="sym">${symbol}</span> on <em>${queryDateFmt}</em>
+      </div>
+      <div class="stat">
+        <div class="v acc">${analogs.length}</div>
+        <div class="l">analogs found</div>
+      </div>
+      <div class="stat">
+        <div class="v ${closest.similarity > 0.8 ? 'acc' : closest.similarity > 0.6 ? '' : 'warn'}">${closest.similarity.toFixed(2)}</div>
+        <div class="l">closest match</div>
+      </div>
+      <div class="stat">
+        <div class="v">pgvector</div>
+        <div class="l">cosine · ivfflat</div>
+      </div>
+    </div>
+
+    <div class="section-head" style="margin-bottom: 14px;">
+      <div class="section-title">Ranked Matches <span class="count">${String(analogs.length).padStart(2, '0')}</span></div>
+      <div class="filter-bar"><div class="filter-chip">EXCLUDING ±30D OF QUERY</div></div>
+    </div>
+
+    <div class="analog-result-grid">
+      ${analogs.map((a, i) => {
+        const dt = new Date(a.ts);
+        const date = `${monthNames[dt.getMonth()]} ${dt.getDate()}, ${dt.getFullYear()}`;
+        const scoreClass = a.divergence_score < -1.5 ? 'warn' : a.divergence_score > 1.5 ? 'acc' : '';
+        return `
+          <div class="analog-result-row" data-id="${a.event_id}">
+            <div class="rank">${String(i + 1).padStart(2, '0')}</div>
+            <div class="meta">
+              <div class="date">${date} · ${a.instrument_symbol}</div>
+              <div class="label">${a.label || '(unlabeled — no curator note)'}</div>
+            </div>
+            <div class="score ${scoreClass}">${a.divergence_score > 0 ? '+' : ''}${a.divergence_score.toFixed(2)}σ</div>
+            <div class="sim">${a.similarity.toFixed(2)}</div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+
+    <div style="font-family: var(--serif); font-style: italic; color: var(--text-dim); font-size: 14px; margin-top: 24px; padding: 16px 20px; border-left: 2px solid var(--border-bright); background: var(--bg-elev);">
+      ${interpretAnalogs(analogs)}
+    </div>
+  `;
+
+  // Click → detail
+  results.querySelectorAll('.analog-result-row').forEach(row => {
+    row.addEventListener('click', () => loadDetail(+row.dataset.id));
+  });
+}
+
+function interpretAnalogs(analogs) {
+  const top = analogs[0];
+  if (!top) return '';
+  if (top.similarity > 0.85) {
+    return `The top match is a strong analog (similarity ${top.similarity.toFixed(2)}) — this day's cross-asset shape closely resembles <em>${top.label || 'the matched event'}</em>. If that prior episode resolved in a known way, today's read carries similar implications.`;
+  } else if (top.similarity > 0.65) {
+    return `The top match is a moderate analog (similarity ${top.similarity.toFixed(2)}). The cross-asset pattern rhymes with <em>${top.label || 'the matched event'}</em> but isn't a clean fit. Worth examining the differences as much as the similarities.`;
+  } else {
+    return `No strong historical analog (top similarity ${top.similarity.toFixed(2)}). The current cross-asset shape is closer to a novel configuration than to any well-known prior episode — handle with extra caution and don't anchor too hard on the matches below.`;
+  }
+}
+
+// ============================================================
+// WebSocket — live alerts
+// ============================================================
+function connectWS() {
+  if (!state.online) return;
+  try {
+    const ws = new WebSocket(`${WS_BASE}/ws/live?api_key=${encodeURIComponent(API_KEY)}`);
+    state.ws = ws;
+    ws.onmessage = (ev) => {
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === 'divergence_alert') showAlertToast(msg);
+      } catch {}
+    };
+    ws.onclose = () => {
+      state.ws = null;
+      // Reconnect after 5s if still online
+      setTimeout(() => state.online && connectWS(), 5000);
+    };
+    ws.onerror = () => ws.close();
+  } catch (e) {
+    console.warn('WS connect failed', e);
+  }
+}
+
+function showAlertToast(msg) {
+  const stack = document.getElementById('toasts');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `
+    <div class="toast-head">
+      <div class="toast-title">⚡ New Divergence Alert</div>
+      <div class="toast-close">×</div>
+    </div>
+    <div class="toast-body">
+      <strong>${msg.instrument}</strong> · <span class="score">${msg.divergence_score > 0 ? '+' : ''}${msg.divergence_score.toFixed(2)}σ</span> · ${msg.regime_label}
+    </div>
+  `;
+  stack.appendChild(el);
+  el.querySelector('.toast-close').addEventListener('click', () => el.remove());
+  // Auto-dismiss after 10s
+  setTimeout(() => el.remove(), 10000);
+  // Refresh dashboard data
+  if (document.getElementById('view-dashboard').classList.contains('active')) {
+    loadDashboard();
+  }
+}
+
+// ============================================================
+// View switching
+// ============================================================
+function switchView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.querySelector(`.nav-item[data-view="${name}"]`)?.classList.add('active');
+
+  const titles = {
+    dashboard: ['Surveillance', 'Live Dashboard'],
+    detail:    ['Surveillance', 'Event Detail'],
+    subs:      ['Surveillance', 'Subscriptions'],
+    analog:    ['Research',     'Analog Finder'],
+  };
+  document.getElementById('crumbs').innerHTML = `<span>${titles[name][0]}</span> / <span class="current">${titles[name][1]}</span>`;
+
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'subs') loadSubscriptions();
+  if (name === 'analog') loadAnalogFinder();
+}
+
+document.querySelectorAll('.nav-item[data-view]').forEach(item => {
+  item.addEventListener('click', () => switchView(item.dataset.view));
+});
+
+// Filter chips
+document.getElementById('dash-filter').addEventListener('click', (e) => {
+  const chip = e.target.closest('.filter-chip');
+  if (!chip) return;
+  document.querySelectorAll('#dash-filter .filter-chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  state.filter = chip.dataset.ac || '';
+  loadDashboard();
+});
+
+// Clock
+function tickClock() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  document.getElementById('clock').textContent = `${hh}:${mm}:${ss}`;
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+// ============================================================
+// Boot
+// ============================================================
+(async function init() {
+  await probeAPI();
+  await loadDashboard();
+  if (state.online) connectWS();
+})();
+</script>
+</body>
+</html>
