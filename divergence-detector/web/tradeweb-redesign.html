@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Measuring What Matters: A New Lens on Liquidity in U.S. Rates</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:         #ffffff;
+  --bg-elev:    #fafaf9;
+  --bg-deep:    #f5f4f1;
+
+  --ink-1:      #0a0a0a;
+  --ink-2:      #404040;
+  --ink-3:      #737373;
+  --ink-4:      #a3a3a3;
+  --ink-5:      #d4d4d4;
+
+  --line:       #e7e5e4;
+
+  --signal:       #1e88c4;
+  --signal-bg:    rgba(30, 136, 196, 0.06);
+  --signal-line:  rgba(30, 136, 196, 0.22);
+  --signal-link:  #4ba3d4;
+
+  /* Chart palette - distinct, premium */
+  --chart-orange:  #f97316;
+  --chart-blue:    #0284c7;
+  --chart-green:   #16a34a;
+
+  --sans:  'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono:  'Geist Mono', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--ink-1);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+  font-feature-settings: 'ss01', 'cv11', 'kern';
+}
+
+::selection { background: var(--ink-1); color: var(--bg); }
+
+/* PROGRESS BAR */
+.progress {
+  position: fixed;
+  top: 0; left: 0;
+  height: 2px;
+  background: var(--signal);
+  z-index: 100;
+  transition: width 0.05s linear;
+  width: 0;
+}
+
+/* NAV */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--line);
+  padding: 0 clamp(20px, 4vw, 56px);
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+
+.brand-mark {
+  width: 22px;
+  height: 22px;
+  background: var(--ink-1);
+  position: relative;
+  flex-shrink: 0;
+}
+.brand-mark::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  background: var(--bg);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+}
+
+.brand-name .dot { color: var(--signal); }
+
+.nav-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+
+.nav-meta .sep { color: var(--ink-5); }
+
+.nav-cta {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 13px;
+  padding: 7px 14px;
+  background: var(--ink-1);
+  color: var(--bg);
+  border-radius: 6px;
+  text-decoration: none;
+  letter-spacing: -0.005em;
+  transition: background 0.15s ease;
+}
+
+.nav-cta:hover { background: var(--signal); }
+
+/* ARTICLE */
+.article {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: clamp(48px, 7vw, 88px) clamp(20px, 4vw, 32px) 96px;
+}
+
+/* HEADER */
+.section-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 32px;
+  padding: 6px 14px 6px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg-elev);
+}
+
+.section-tag .marker {
+  width: 6px;
+  height: 6px;
+  background: var(--signal);
+  border-radius: 50%;
+}
+
+h1.title {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: clamp(36px, 5.5vw, 64px);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  color: var(--ink-1);
+  margin-bottom: 24px;
+  text-wrap: balance;
+}
+
+h1.title .em { color: var(--signal); }
+
+.dek {
+  font-family: var(--sans);
+  font-weight: 400;
+  font-size: clamp(18px, 1.8vw, 21px);
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  color: var(--ink-2);
+  max-width: 58ch;
+  margin-bottom: 48px;
+}
+
+.dek strong { color: var(--ink-1); font-weight: 600; }
+
+/* BYLINE — author cards */
+.byline {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 24px;
+  align-items: center;
+  padding: 24px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 56px;
+  flex-wrap: wrap;
+}
+
+.authors {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.author-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--ink-1), var(--ink-2));
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.author-avatar.alt {
+  background: linear-gradient(135deg, var(--ink-2), var(--ink-3));
+}
+
+.author-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.author-name {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  color: var(--ink-1);
+  line-height: 1.2;
+}
+
+.author-role {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--ink-3);
+  margin-top: 3px;
+}
+
+.byline-meta {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--ink-3);
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.byline-meta .date { color: var(--ink-1); font-weight: 600; }
+
+.data-credit {
+  margin-bottom: 48px;
+  padding: 16px 20px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--ink-3);
+  line-height: 1.6;
+}
+
+.data-credit strong { color: var(--ink-1); font-weight: 600; }
+.data-credit .label {
+  color: var(--signal);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-right: 8px;
+}
+
+/* SECTION HEADINGS */
+h2 {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: clamp(26px, 3.2vw, 36px);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--signal);
+  margin: 72px 0 28px;
+  text-wrap: balance;
+}
+
+h2.num::before {
+  content: counter(h2, decimal-leading-zero);
+  counter-increment: h2;
+  font-family: var(--mono);
+  font-size: 0.45em;
+  font-weight: 600;
+  color: var(--signal-link);
+  letter-spacing: 0.04em;
+  margin-right: 18px;
+  vertical-align: 0.45em;
+}
+
+.article { counter-reset: h2; }
+
+/* BODY */
+.article p {
+  font-family: var(--sans);
+  font-weight: 400;
+  font-size: 17.5px;
+  line-height: 1.65;
+  letter-spacing: -0.01em;
+  color: var(--ink-2);
+  margin-bottom: 20px;
+}
+
+.article p strong { color: var(--ink-1); font-weight: 600; }
+.article p em { color: var(--signal); font-style: normal; font-weight: 500; }
+
+.article p.lead {
+  font-size: 20px;
+  line-height: 1.55;
+  color: var(--ink-1);
+  font-weight: 400;
+}
+
+.article p.lead::first-letter {
+  font-family: var(--sans);
+  font-size: 4.2em;
+  font-weight: 500;
+  line-height: 0.85;
+  float: left;
+  margin: 0.08em 0.12em 0 -0.04em;
+  color: var(--signal);
+  letter-spacing: -0.05em;
+}
+
+/* PULL QUOTE */
+.pullquote {
+  margin: 56px -32px;
+  padding: 0 32px;
+  border-left: 3px solid var(--signal);
+  font-family: var(--sans);
+  font-weight: 400;
+  font-size: clamp(22px, 2.8vw, 30px);
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  color: var(--ink-1);
+  text-wrap: balance;
+}
+
+.pullquote .em { color: var(--signal); }
+.pullquote .src {
+  display: block;
+  margin-top: 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* FIGURE */
+figure {
+  margin: 56px 0;
+}
+
+figure.bleed {
+  margin-left: clamp(-20px, -4vw, -64px);
+  margin-right: clamp(-20px, -4vw, -64px);
+}
+
+.fig-frame {
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 24px 24px 16px;
+  overflow: hidden;
+}
+
+.fig-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 4px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.fig-title .h {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 15.5px;
+  letter-spacing: -0.015em;
+  color: var(--ink-1);
+}
+
+.fig-title .meta {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.fig-frame svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+figcaption {
+  margin-top: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.55;
+  color: var(--ink-2);
+  letter-spacing: -0.005em;
+}
+
+figcaption .label {
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--signal);
+}
+
+/* STATS PANEL embedded in chart */
+.stats-overlay {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* INLINE CARDS */
+.coverage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin: 32px 0;
+}
+
+.coverage-card {
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px 18px;
+}
+
+.coverage-card .l {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 8px;
+}
+
+.coverage-card .v {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  color: var(--ink-1);
+  line-height: 1.3;
+}
+
+.coverage-card .sub {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-top: 2px;
+  font-weight: 500;
+}
+
+/* CALLOUT to product */
+.callout {
+  margin: 64px 0 0;
+  padding: 28px 32px;
+  background: var(--ink-1);
+  color: var(--bg);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.callout .text { flex: 1; min-width: 240px; }
+
+.callout .eb {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--signal);
+  margin-bottom: 6px;
+}
+
+.callout h3 {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 21px;
+  letter-spacing: -0.02em;
+  color: var(--bg);
+  margin: 0 0 4px;
+}
+
+.callout p {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: rgba(255,255,255,0.7);
+  margin: 0;
+}
+
+.callout-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  color: var(--ink-1);
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 13.5px;
+  letter-spacing: -0.005em;
+  padding: 10px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.callout-cta:hover { background: var(--signal); color: var(--bg); }
+
+/* FOOTER */
+.footer {
+  max-width: 780px;
+  margin: 56px auto 0;
+  padding: 28px clamp(20px, 4vw, 32px) 64px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.footer-attr {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-3);
+  line-height: 1.6;
+}
+
+.footer-attr strong { color: var(--ink-1); font-weight: 600; }
+.footer-attr a { color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; }
+.footer-attr a:hover { color: var(--signal); }
+
+.footer-meta {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-4);
+  letter-spacing: 0.02em;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 720px) {
+  .byline { grid-template-columns: 1fr; }
+  .byline-meta { text-align: left; }
+  .pullquote { margin-left: -20px; margin-right: -20px; padding: 0 20px; }
+  .article p.lead::first-letter { font-size: 3.4em; }
+  figure.bleed { margin-left: -20px; margin-right: -20px; }
+  .nav-meta { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+
+<nav class="nav">
+  <div class="brand">
+    <div class="brand-mark"></div>
+    <span class="brand-name">Divergence<span class="dot">.</span></span>
+  </div>
+  <div class="nav-meta">
+    <span>Research</span>
+    <span class="sep">·</span>
+    <span>Rates · Liquidity</span>
+  </div>
+  <a href="#product" class="nav-cta">View product</a>
+</nav>
+
+<article class="article">
+
+  <!-- HEADER -->
+  <div class="section-tag">
+    <span class="marker"></span>
+    Tradeweb Research · Rates
+  </div>
+
+  <h1 class="title">Measuring what matters: a new lens on <span class="em">liquidity</span> in U.S. rates.</h1>
+
+  <p class="dek">In institutional rates markets, <strong>what gets executed</strong> can diverge sharply from <strong>what gets implied</strong>. A new index from Tradeweb measures liquidity in the units traders actually use—basis points and ticks, across products, across cycles.</p>
+
+  <!-- AUTHORS -->
+  <div class="byline">
+    <div class="authors">
+      <div class="author">
+        <div class="author-avatar"></div>
+        <div class="author-info">
+          <span class="author-name">Bhas Nalabothula</span>
+          <span class="author-role">Head of U.S. Institutional Rates, Tradeweb</span>
+        </div>
+      </div>
+      <div class="author">
+        <div class="author-avatar alt"></div>
+        <div class="author-info">
+          <span class="author-name">Sean Hu</span>
+          <span class="author-role">Head of U.S. Institutional Rates Data Science, Tradeweb</span>
+        </div>
+      </div>
+    </div>
+    <div class="byline-meta">
+      <span class="date">March 24, 2026</span>
+      <span>6 min read</span>
+    </div>
+  </div>
+
+  <div class="data-credit">
+    <span class="label">Data analysis</span>
+    <strong>Mihir Chinai · Steve Qiu · Gabriel Zanuttini-Frank · Rene Ulloa</strong> &nbsp;—&nbsp; U.S. Institutional Rates Data Science
+  </div>
+
+  <!-- LEDE -->
+  <p class="lead">Few concepts are invoked as often in fixed-income markets as liquidity—and few are measured as poorly. In U.S. institutional rates, where daily turnover runs into the trillions, the quality of liquidity governs not only the cost of execution but how quickly the market processes new information and recalibrates pricing.</p>
+
+  <p>Conventional gauges—posted bid-ask spreads, option-implied volatility, dealer color—each tell part of the story. Each is also, by construction, a measure of what the market <em>expects</em> or what it is <em>showing on a screen</em> at one moment. None of them tells you what it cost to actually move size.</p>
+
+  <p>That gap—between what the market projects and what it delivers—widens fastest under stress. The week following "Liberation Day" in April 2025 made the point sharply. Equities sold off more than 10.5%; the VIX printed above 65, a reading previously seen only during the 2008 financial crisis and the March 2020 pandemic. And yet realized transaction cost in rates was meaningfully less strained than during either of those earlier episodes. By the implied measures, this was a crisis. By execution, it was a difficult week.</p>
+
+  <p>Without a consistent way to put those episodes alongside each other, the contrast was easy to miss in real time. What the market needed was a measure of liquidity rooted not in what was being implied, but in what was actually being executed.</p>
+
+  <!-- ─────────────────────────────────────────────────────
+       SECTION 1
+       ───────────────────────────────────────────────────── -->
+  <h2 class="num">From implied signals to realized conditions.</h2>
+
+  <p>The Tradeweb Liquidity Cost Index addresses that gap. Built on aggregated transaction-level data drawn from the firm's institutional rates platform, it captures the realized cost of executing benchmark trades and the actual intraday price movement of U.S. interest-rate products. The inputs are observed prints—not models, not forward curves, not opinions.</p>
+
+  <p>T-Cost sits at the center of the framework. Expressed in basis points—the unit a trader uses on every ticket—it captures the realized cost of trading benchmark size during principal market hours. The question it answers is the one that matters when sizing a trade: <em>what did this market actually cost today, relative to what it has cost historically?</em></p>
+
+  <p>When markets are agitated, the <em>feel</em> and the <em>function</em> can diverge sharply. The execution data discriminates between liquidity that has genuinely degraded and liquidity that has merely been repriced. That is a useful distinction—often the more useful one.</p>
+
+  <!-- CHART 1 -->
+  <figure class="bleed">
+    <div class="fig-frame">
+      <div class="fig-title">
+        <span class="h">Transaction Cost · USDIRS &amp; UST Indices, 2020–2026</span>
+        <span class="meta">bps · daily</span>
+      </div>
+      <svg viewBox="0 0 880 380" xmlns="http://www.w3.org/2000/svg" font-family="Geist, sans-serif">
+        <!-- Grid lines -->
+        <g stroke="#e7e5e4" stroke-width="1">
+          <line x1="60" y1="30" x2="860" y2="30"/>
+          <line x1="60" y1="80" x2="860" y2="80"/>
+          <line x1="60" y1="130" x2="860" y2="130"/>
+          <line x1="60" y1="180" x2="860" y2="180"/>
+          <line x1="60" y1="230" x2="860" y2="230"/>
+          <line x1="60" y1="280" x2="860" y2="280"/>
+          <line x1="60" y1="330" x2="860" y2="330"/>
+        </g>
+
+        <!-- Y axis labels -->
+        <g font-family="Geist Mono, monospace" font-size="10" fill="#737373" font-weight="500">
+          <text x="52" y="34" text-anchor="end">1.2</text>
+          <text x="52" y="84" text-anchor="end">1.0</text>
+          <text x="52" y="134" text-anchor="end">0.8</text>
+          <text x="52" y="184" text-anchor="end">0.6</text>
+          <text x="52" y="234" text-anchor="end">0.4</text>
+          <text x="52" y="284" text-anchor="end">0.2</text>
+          <text x="52" y="334" text-anchor="end">0.0</text>
+        </g>
+
+        <!-- X axis (years) -->
+        <g stroke="#0a0a0a" stroke-width="1.5">
+          <line x1="60" y1="330" x2="860" y2="330"/>
+        </g>
+        <g font-family="Geist Mono, monospace" font-size="11" fill="#0a0a0a" font-weight="600">
+          <text x="60" y="354">2020</text>
+          <text x="193" y="354">2021</text>
+          <text x="326" y="354">2022</text>
+          <text x="460" y="354">2023</text>
+          <text x="593" y="354">2024</text>
+          <text x="726" y="354">2025</text>
+          <text x="860" y="354" text-anchor="end">2026</text>
+        </g>
+
+        <!-- Event markers (vertical dashed lines + labels) -->
+        <g stroke="#a3a3a3" stroke-width="1" stroke-dasharray="3,3" opacity="0.5">
+          <line x1="105" y1="30" x2="105" y2="330"/>  <!-- COVID -->
+          <line x1="335" y1="30" x2="335" y2="330"/>  <!-- Ukraine -->
+          <line x1="365" y1="30" x2="365" y2="330"/>  <!-- First Fed Hike -->
+          <line x1="480" y1="30" x2="480" y2="330"/>  <!-- SVB -->
+          <line x1="650" y1="30" x2="650" y2="330"/>  <!-- Yen Carry -->
+          <line x1="745" y1="30" x2="745" y2="330"/>  <!-- Liberation Day -->
+        </g>
+
+        <!-- Event labels along bottom -->
+        <g font-family="Geist Mono, monospace" font-size="9" fill="#737373" font-weight="500" text-anchor="middle">
+          <text x="105" y="372">COVID</text>
+          <text x="335" y="372">UKRAINE</text>
+          <text x="365" y="382">FED HIKE</text>
+          <text x="480" y="372">SVB</text>
+          <text x="650" y="372">YEN CARRY</text>
+          <text x="745" y="372">LIBERATION DAY</text>
+        </g>
+
+        <!-- USDIRS T-Cost line (orange) - has big COVID spike to ~1.11, smaller spikes at other events -->
+        <path d="M 60 310 L 70 315 L 80 305 L 90 295 L 100 50 L 110 200 L 120 280 L 130 305 L 140 310 L 160 308 L 180 312 L 200 310 L 220 305 L 240 308 L 260 310 L 280 305 L 300 300 L 320 295 L 335 270 L 345 290 L 360 250 L 375 270 L 390 290 L 410 295 L 430 290 L 450 285 L 470 260 L 480 200 L 490 230 L 510 260 L 530 280 L 550 290 L 570 295 L 590 290 L 610 285 L 630 280 L 645 270 L 660 250 L 675 270 L 690 285 L 710 290 L 725 285 L 740 240 L 750 195 L 760 230 L 775 270 L 790 285 L 810 290 L 830 295 L 850 305 L 860 308"
+              fill="none" stroke="#f97316" stroke-width="1.6" stroke-linejoin="round"/>
+
+        <!-- UST T-Cost line (blue) - lower throughout, max ~0.59 -->
+        <path d="M 60 320 L 70 322 L 80 318 L 90 315 L 100 185 L 110 270 L 120 305 L 130 318 L 140 322 L 160 320 L 180 322 L 200 320 L 220 318 L 240 320 L 260 322 L 280 320 L 300 318 L 320 315 L 335 305 L 345 315 L 360 295 L 375 305 L 390 315 L 410 318 L 430 315 L 450 312 L 470 290 L 480 270 L 490 290 L 510 305 L 530 315 L 550 318 L 570 318 L 590 315 L 610 312 L 630 310 L 645 305 L 660 295 L 675 305 L 690 312 L 710 315 L 725 312 L 740 295 L 750 275 L 760 295 L 775 310 L 790 318 L 810 320 L 830 322 L 850 322 L 860 322"
+              fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linejoin="round"/>
+
+        <!-- Stats panel overlay -->
+        <g transform="translate(550, 50)" class="stats-overlay">
+          <rect x="0" y="0" width="280" height="115" fill="white" stroke="#e7e5e4" stroke-width="1" rx="6"/>
+          <rect x="0" y="0" width="280" height="22" fill="#fafaf9" stroke="#e7e5e4" stroke-width="1" rx="6"/>
+          <text x="14" y="15" font-family="Geist Mono, monospace" font-size="10" font-weight="600" fill="#0a0a0a" letter-spacing="0.04em">USDIRS &amp; UST · T-COST STATISTICS</text>
+
+          <g font-family="Geist Mono, monospace" font-size="10.5" font-weight="500">
+            <!-- Header row -->
+            <text x="14" y="42" fill="#737373"></text>
+            <rect x="135" y="32" width="65" height="16" fill="#f97316" rx="3"/>
+            <text x="167" y="44" fill="white" font-weight="700" text-anchor="middle">USDIRS</text>
+            <rect x="208" y="32" width="62" height="16" fill="#0284c7" rx="3"/>
+            <text x="239" y="44" fill="white" font-weight="700" text-anchor="middle">UST</text>
+
+            <!-- Stats -->
+            <text x="14" y="62" fill="#737373">Mean</text>
+            <text x="167" y="62" fill="#0a0a0a" text-anchor="middle">0.09</text>
+            <text x="239" y="62" fill="#0a0a0a" text-anchor="middle">0.04</text>
+
+            <text x="14" y="76" fill="#737373">Median</text>
+            <text x="167" y="76" fill="#0a0a0a" text-anchor="middle">0.08</text>
+            <text x="239" y="76" fill="#0a0a0a" text-anchor="middle">0.04</text>
+
+            <text x="14" y="90" fill="#737373">Max</text>
+            <text x="167" y="90" fill="#f97316" text-anchor="middle" font-weight="700">1.11</text>
+            <text x="239" y="90" fill="#0284c7" text-anchor="middle" font-weight="700">0.59</text>
+
+            <text x="14" y="104" fill="#737373">Min</text>
+            <text x="167" y="104" fill="#0a0a0a" text-anchor="middle">0.01</text>
+            <text x="239" y="104" fill="#0a0a0a" text-anchor="middle">0.01</text>
+          </g>
+        </g>
+
+        <!-- Legend -->
+        <g transform="translate(60, 6)" font-family="Geist Mono, monospace" font-size="10" font-weight="500">
+          <line x1="0" y1="6" x2="16" y2="6" stroke="#f97316" stroke-width="2"/>
+          <text x="22" y="10" fill="#0a0a0a">USDIRS Index — T-Cost</text>
+          <line x1="180" y1="6" x2="196" y2="6" stroke="#0284c7" stroke-width="2"/>
+          <text x="202" y="10" fill="#0a0a0a">UST Index — T-Cost</text>
+        </g>
+
+        <!-- Y axis title -->
+        <text x="20" y="180" font-size="10" font-family="Geist Mono, monospace" fill="#737373" font-weight="500" transform="rotate(-90 20 180)" text-anchor="middle">T-Cost / Composite Width · bps</text>
+      </svg>
+    </div>
+    <figcaption>
+      <span class="label">Figure 01</span>
+      <span>Realized T-Cost for the U.S. swaps (USDIRS) and Treasury (UST) indices from 2020 through early 2026. Stress events are annotated. The COVID dislocation of March 2020 dominates the series; subsequent episodes—Ukraine, the first Fed hike, SVB, the yen carry unwind, Liberation Day—register clearly but at a smaller magnitude. Recreated from Tradeweb data.</span>
+    </figcaption>
+  </figure>
+
+  <!-- ─────────────────────────────────────────────────────
+       SECTION 2 — Cross-asset framework
+       ───────────────────────────────────────────────────── -->
+  <h2 class="num">Three measures, four asset classes.</h2>
+
+  <p>T-Cost is the centerpiece, but it does not stand alone. The framework adds two complementary measures: a <em>Volatility Index</em> that captures realized intraday price movement normalized to basis points per day, and a <em>Composite Width</em> series that tracks how tightly Tradeweb's composite pricing is quoted at any moment. Volatility reflects what the market actually moved—not what option chains thought it would. Composite width reflects how wide a dealer book is willing to stand on size.</p>
+
+  <p>The three measures span four asset classes, intentionally chosen for breadth across the rates complex:</p>
+
+  <div class="coverage-grid">
+    <div class="coverage-card">
+      <div class="l">Rates</div>
+      <div class="v">U.S. Treasuries</div>
+      <div class="sub">UST Index</div>
+    </div>
+    <div class="coverage-card">
+      <div class="l">Rates</div>
+      <div class="v">U.S. Swaps</div>
+      <div class="sub">USDIRS Index</div>
+    </div>
+    <div class="coverage-card">
+      <div class="l">Mortgage</div>
+      <div class="v">Agency MBS · TBA</div>
+      <div class="sub">FNCL Index</div>
+    </div>
+    <div class="coverage-card">
+      <div class="l">Credit</div>
+      <div class="v">CDX Investment Grade</div>
+      <div class="sub">CDX IG Index</div>
+    </div>
+  </div>
+
+  <p>One framework, one set of units, four very different parts of the curve. That consistency is the architectural point. Comparing execution conditions across products, and across time, requires that they be measured in the same way.</p>
+
+  <!-- ─────────────────────────────────────────────────────
+       SECTION 3 — Context across cycles
+       ───────────────────────────────────────────────────── -->
+  <h2 class="num">Context across market cycles.</h2>
+
+  <p>The longest tail of the dataset is what makes the framework genuinely useful. With several years of history, today's reading can be evaluated against the distribution of prior conditions—not against intuition, not against the last analogous episode someone happened to remember, but against the full record.</p>
+
+  <p>That historical anchoring matters because the same absolute T-Cost can be interpreted very differently in different contexts. A reading at the 95th percentile of the past year and a reading at the 50th percentile of a longer window are not the same signal. The framework lets a portfolio manager or risk officer say with precision: <em>this is what a stressed session has historically looked like, and this is where today sits inside it.</em></p>
+
+  <div class="pullquote">
+    By the <span class="em">implied</span> measures, this was a crisis. By <span class="em">execution</span>, it was a difficult week.
+    <span class="src">On Liberation Day, April 2025</span>
+  </div>
+
+  <p>The framework also surfaces something harder to see in any single instrument: <em>cross-asset divergence</em>. Liquidity does not move uniformly. Sessions in which one corner of the rates complex dislocates while others remain orderly are common—and they carry information that single-instrument measures cannot.</p>
+
+  <p>The clearest recent example came on <strong>January 9, 2026</strong>. Following an administration order for Fannie Mae and Freddie Mac to purchase $200 billion in mortgage-backed securities, execution costs in MBS spiked. T-Cost in the agency MBS index printed roughly <strong>500% above its one-year median</strong>. Treasury T-Cost, on the same day, remained stable—just below its own one-year median. MBS tightened more than 20 basis points against Treasuries as the market priced in the demand shock.</p>
+
+  <p>Side-by-side, the divergence was immediate and quantifiable. Without a consistent cross-asset frame, it would have been visible only to participants who already knew where to look.</p>
+
+  <!-- CHART 2 -->
+  <figure class="bleed">
+    <div class="fig-frame">
+      <div class="fig-title">
+        <span class="h">Transaction Cost · MBS FNCL &amp; UST Indices, 2025–2026</span>
+        <span class="meta">MBS: 32nds · UST: bps</span>
+      </div>
+      <svg viewBox="0 0 880 380" xmlns="http://www.w3.org/2000/svg" font-family="Geist, sans-serif">
+        <!-- Grid lines -->
+        <g stroke="#e7e5e4" stroke-width="1">
+          <line x1="60" y1="30" x2="860" y2="30"/>
+          <line x1="60" y1="65" x2="860" y2="65"/>
+          <line x1="60" y1="100" x2="860" y2="100"/>
+          <line x1="60" y1="135" x2="860" y2="135"/>
+          <line x1="60" y1="170" x2="860" y2="170"/>
+          <line x1="60" y1="205" x2="860" y2="205"/>
+          <line x1="60" y1="240" x2="860" y2="240"/>
+          <line x1="60" y1="275" x2="860" y2="275"/>
+          <line x1="60" y1="310" x2="860" y2="310"/>
+          <line x1="60" y1="330" x2="860" y2="330"/>
+        </g>
+
+        <!-- Y axis labels -->
+        <g font-family="Geist Mono, monospace" font-size="10" fill="#737373" font-weight="500">
+          <text x="52" y="34" text-anchor="end">0.9</text>
+          <text x="52" y="69" text-anchor="end">0.8</text>
+          <text x="52" y="104" text-anchor="end">0.7</text>
+          <text x="52" y="139" text-anchor="end">0.6</text>
+          <text x="52" y="174" text-anchor="end">0.5</text>
+          <text x="52" y="209" text-anchor="end">0.4</text>
+          <text x="52" y="244" text-anchor="end">0.3</text>
+          <text x="52" y="279" text-anchor="end">0.2</text>
+          <text x="52" y="314" text-anchor="end">0.1</text>
+          <text x="52" y="334" text-anchor="end">0.0</text>
+        </g>
+
+        <!-- X axis -->
+        <g stroke="#0a0a0a" stroke-width="1.5">
+          <line x1="60" y1="330" x2="860" y2="330"/>
+        </g>
+        <g font-family="Geist Mono, monospace" font-size="10" fill="#0a0a0a" font-weight="600" letter-spacing="0.04em">
+          <text x="60" y="354">04·25</text>
+          <text x="140" y="354">05·25</text>
+          <text x="220" y="354">06·25</text>
+          <text x="300" y="354">07·25</text>
+          <text x="380" y="354">08·25</text>
+          <text x="460" y="354">09·25</text>
+          <text x="540" y="354">10·25</text>
+          <text x="620" y="354">11·25</text>
+          <text x="700" y="354">12·25</text>
+          <text x="780" y="354">01·26</text>
+          <text x="860" y="354" text-anchor="end">02·26</text>
+        </g>
+
+        <!-- Event markers -->
+        <g stroke="#a3a3a3" stroke-width="1" stroke-dasharray="3,3" opacity="0.6">
+          <line x1="105" y1="30" x2="105" y2="330"/>  <!-- Liberation Day -->
+          <line x1="800" y1="30" x2="800" y2="330"/>  <!-- Jan 9 spike -->
+        </g>
+
+        <!-- Liberation Day label -->
+        <rect x="78" y="362" width="56" height="14" rx="2" fill="white" stroke="#f97316"/>
+        <text x="106" y="372" font-family="Geist Mono, monospace" font-size="9" fill="#f97316" font-weight="700" text-anchor="middle" letter-spacing="0.04em">LIB. DAY</text>
+
+        <!-- Jan 9 callout -->
+        <circle cx="800" cy="48" r="5" fill="#16a34a" stroke="white" stroke-width="2"/>
+        <line x1="800" y1="48" x2="730" y2="100" stroke="#0a0a0a" stroke-width="1"/>
+        <g transform="translate(560, 100)">
+          <rect x="0" y="0" width="170" height="44" rx="4" fill="white" stroke="#0a0a0a" stroke-width="1"/>
+          <text x="12" y="16" font-family="Geist Mono, monospace" font-size="10" font-weight="700" fill="#0a0a0a">2026-01-09</text>
+          <text x="12" y="29" font-family="Geist Mono, monospace" font-size="9.5" fill="#16a34a" font-weight="600">MBS · 0.79 (32nds)</text>
+          <text x="12" y="40" font-family="Geist Mono, monospace" font-size="9.5" fill="#0284c7" font-weight="600">UST · 0.02 (bps)</text>
+        </g>
+
+        <!-- MBS FNCL T-Cost line (green) - Liberation Day spike to ~0.5, then ~0.1-0.3, big Jan 9 spike to 0.79 -->
+        <path d="M 60 295 L 70 285 L 80 275 L 90 200 L 100 60 L 110 150 L 120 240 L 130 275 L 140 280 L 155 270 L 170 260 L 185 270 L 200 280 L 215 275 L 230 265 L 245 270 L 260 280 L 275 270 L 290 260 L 305 255 L 320 250 L 335 260 L 350 270 L 365 265 L 380 255 L 395 260 L 410 275 L 425 270 L 440 260 L 455 265 L 470 270 L 485 250 L 500 240 L 515 250 L 530 265 L 545 270 L 560 250 L 575 240 L 590 250 L 605 265 L 620 270 L 635 260 L 650 250 L 665 245 L 680 255 L 695 270 L 710 265 L 725 250 L 740 235 L 755 230 L 770 220 L 785 180 L 800 55 L 810 130 L 825 200 L 840 250 L 855 270"
+              fill="none" stroke="#16a34a" stroke-width="1.6" stroke-linejoin="round"/>
+
+        <!-- UST T-Cost line (blue) - mostly very low, small bumps -->
+        <path d="M 60 318 L 70 318 L 80 316 L 90 308 L 100 285 L 110 305 L 120 316 L 130 320 L 140 320 L 160 318 L 180 318 L 200 319 L 220 320 L 240 320 L 260 318 L 280 318 L 300 320 L 320 320 L 340 318 L 360 318 L 380 320 L 400 318 L 420 319 L 440 320 L 460 318 L 480 315 L 500 318 L 520 320 L 540 320 L 560 318 L 580 320 L 600 320 L 620 318 L 640 318 L 660 320 L 680 320 L 700 318 L 720 318 L 740 316 L 760 316 L 780 314 L 800 310 L 820 316 L 840 320 L 860 320"
+              fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linejoin="round"/>
+
+        <!-- Stats panel overlay - top right -->
+        <g transform="translate(580, 200)" class="stats-overlay">
+          <rect x="0" y="0" width="260" height="115" fill="white" stroke="#e7e5e4" stroke-width="1" rx="6"/>
+          <rect x="0" y="0" width="260" height="22" fill="#fafaf9" stroke="#e7e5e4" stroke-width="1" rx="6"/>
+          <text x="14" y="15" font-family="Geist Mono, monospace" font-size="10" font-weight="600" fill="#0a0a0a" letter-spacing="0.04em">MBS FNCL &amp; UST · T-COST STATISTICS</text>
+
+          <g font-family="Geist Mono, monospace" font-size="10.5" font-weight="500">
+            <rect x="125" y="32" width="56" height="16" fill="#16a34a" rx="3"/>
+            <text x="153" y="44" fill="white" font-weight="700" text-anchor="middle">MBS</text>
+            <rect x="189" y="32" width="56" height="16" fill="#0284c7" rx="3"/>
+            <text x="217" y="44" fill="white" font-weight="700" text-anchor="middle">UST</text>
+
+            <text x="14" y="62" fill="#737373">Mean</text>
+            <text x="153" y="62" fill="#0a0a0a" text-anchor="middle">0.16</text>
+            <text x="217" y="62" fill="#0a0a0a" text-anchor="middle">0.03</text>
+
+            <text x="14" y="76" fill="#737373">Median</text>
+            <text x="153" y="76" fill="#0a0a0a" text-anchor="middle">0.15</text>
+            <text x="217" y="76" fill="#0a0a0a" text-anchor="middle">0.03</text>
+
+            <text x="14" y="90" fill="#737373">Max</text>
+            <text x="153" y="90" fill="#16a34a" text-anchor="middle" font-weight="700">0.89</text>
+            <text x="217" y="90" fill="#0284c7" text-anchor="middle" font-weight="700">0.18</text>
+
+            <text x="14" y="104" fill="#737373">Min</text>
+            <text x="153" y="104" fill="#0a0a0a" text-anchor="middle">0.02</text>
+            <text x="217" y="104" fill="#0a0a0a" text-anchor="middle">0.01</text>
+          </g>
+        </g>
+
+        <!-- Legend -->
+        <g transform="translate(60, 6)" font-family="Geist Mono, monospace" font-size="10" font-weight="500">
+          <line x1="0" y1="6" x2="16" y2="6" stroke="#16a34a" stroke-width="2"/>
+          <text x="22" y="10" fill="#0a0a0a">MBS FNCL Index — T-Cost (32nds)</text>
+          <line x1="248" y1="6" x2="264" y2="6" stroke="#0284c7" stroke-width="2"/>
+          <text x="270" y="10" fill="#0a0a0a">UST Index — T-Cost (bps)</text>
+        </g>
+
+        <!-- Y axis title -->
+        <text x="20" y="180" font-size="10" font-family="Geist Mono, monospace" fill="#737373" font-weight="500" transform="rotate(-90 20 180)" text-anchor="middle">T-Cost / Composite Width</text>
+      </svg>
+    </div>
+    <figcaption>
+      <span class="label">Figure 02</span>
+      <span>Realized T-Cost for agency MBS (FNCL) and Treasuries, April 2025 through February 2026. The Liberation Day spike is visible at the left; the larger January 9, 2026 print—following the announced agency MBS purchase order—shows MBS T-Cost at 0.79 against a Treasury T-Cost of 0.02 on the same day. Recreated from Tradeweb data.</span>
+    </figcaption>
+  </figure>
+
+  <!-- ─────────────────────────────────────────────────────
+       SECTION 4 — Practical benchmark
+       ───────────────────────────────────────────────────── -->
+  <h2 class="num">A more practical benchmark.</h2>
+
+  <p>The framework is built for use, not for display. Execution strategies depend on knowing what trades are actually costing. Risk management depends on distinguishing between elevated implied stress and elevated realized stress—they imply different positioning. Performance benchmarking depends on a reference point that reflects what the market delivered, not what it might have implied under different circumstances.</p>
+
+  <p>Grounding the indices in observed transaction data and expressing them in basis points (or 32nds, for MBS) gives every desk a common vocabulary. A 0.79 print in MBS T-Cost on January 9 is not an abstract z-score. It is an executable number that traders can read, compare, and act on—immediately.</p>
+
+  <p>The roadmap from here is the obvious one: broader coverage, finer time resolution, and intraday live series. As liquidity infrastructure evolves, the lens has to evolve with it.</p>
+
+  <p>Liquidity, in the end, is hard to define in words. Measured in basis points and ticks—consistently, historically, and across products—it becomes something else: a quantity that traders, risk officers, and portfolio managers can reason about as precisely as price itself.</p>
+
+  <!-- COMPANION PRODUCT CALLOUT -->
+  <div class="callout" id="product">
+    <div class="text">
+      <div class="eb">Companion build</div>
+      <h3>The Divergence Detector</h3>
+      <p>A working prototype inspired by the LCI framework — realized vs. implied liquidity surveillance across six U.S. rates instruments, with Claude Opus 4.7 narrative authorship and pgvector historical analog search.</p>
+    </div>
+    <a href="#" class="callout-cta">
+      View product
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M3 11L11 3M11 3H5M11 3V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </a>
+  </div>
+
+</article>
+
+<footer class="footer">
+  <div class="footer-attr">
+    <strong>Source article:</strong> "Measuring What Matters: A New Lens on Liquidity in U.S. Rates" by Bhas Nalabothula and Sean Hu, published by Tradeweb on March 24, 2026. Data analysis by Mihir Chinai, Steve Qiu, Gabriel Zanuttini-Frank, and Rene Ulloa.
+    <br><br>
+    This page is a <strong>design re-interpretation</strong> built as a companion to the Divergence Detector project. Prose has been substantially rewritten; charts have been recreated as SVG from the originals. The underlying analytical framework, data, and findings are entirely Tradeweb's. For the authoritative version, see <a href="https://www.tradeweb.com/newsroom/media-center/insights/blog/measuring-what-matters-a-new-lens-on-liquidity-in-u.s.-rates" target="_blank" rel="noopener">tradeweb.com</a>.
+  </div>
+  <div class="footer-meta">
+    <span>Divergence<span style="color: var(--signal)">.</span> · Companion piece</span>
+    <span>Design redesign · May 2026</span>
+  </div>
+</footer>
+
+<script>
+const progress = document.getElementById('progress');
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  const scrolled = h.scrollTop / (h.scrollHeight - h.clientHeight);
+  progress.style.width = (scrolled * 100) + '%';
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Divergence · Liquidity Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:         #ffffff;
+  --bg-elev:    #fafaf9;
+  --bg-deep:    #f5f4f1;
+  --bg-hover:   #f0eeea;
+
+  --ink-1:      #0a0a0a;
+  --ink-2:      #404040;
+  --ink-3:      #737373;
+  --ink-4:      #a3a3a3;
+  --ink-5:      #d4d4d4;
+
+  --line:       #e7e5e4;
+  --line-soft:  #f0eeea;
+
+  --signal:       #d92020;
+  --signal-bg:    rgba(217, 32, 32, 0.05);
+  --signal-line:  rgba(217, 32, 32, 0.18);
+
+  --positive:     #15803d;
+  --positive-bg:  rgba(21, 128, 61, 0.06);
+
+  --sans:  'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --mono:  'Geist Mono', ui-monospace, 'SF Mono', monospace;
+
+  --pad:   clamp(24px, 4vw, 56px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+
+html, body {
+  background: var(--bg);
+  color: var(--ink-1);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+  font-feature-settings: 'ss01', 'cv11', 'kern';
+  height: 100vh;
+  overflow: hidden;
+}
+
+::selection { background: var(--ink-1); color: var(--bg); }
+
+.app {
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.app::-webkit-scrollbar { width: 10px; }
+.app::-webkit-scrollbar-track { background: transparent; }
+.app::-webkit-scrollbar-thumb { background: var(--ink-5); border: 3px solid var(--bg); }
+.app::-webkit-scrollbar-thumb:hover { background: var(--ink-4); }
+
+/* ─────────────────────────────────────────────────────────
+   NAV
+   ───────────────────────────────────────────────────────── */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--line);
+  padding: 0 var(--pad);
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.02em;
+  color: var(--ink-1);
+  cursor: pointer;
+}
+
+.brand-mark {
+  width: 22px;
+  height: 22px;
+  background: var(--ink-1);
+  position: relative;
+}
+.brand-mark::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  background: var(--bg);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+}
+
+.brand-name { font-weight: 600; }
+.brand-name .dot { color: var(--signal); }
+
+.nav-center {
+  display: flex;
+  gap: 4px;
+}
+
+.nav-item {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 13.5px;
+  letter-spacing: -0.005em;
+  padding: 7px 14px;
+  color: var(--ink-3);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.nav-item:hover { color: var(--ink-1); background: var(--bg-elev); }
+.nav-item.active { color: var(--ink-1); background: var(--bg-deep); }
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+
+.nav-clock { font-feature-settings: 'tnum'; }
+
+.conn-pip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-2);
+  transition: all 0.2s ease;
+}
+
+.conn-pip::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-4);
+}
+
+.conn-pip.live { color: var(--positive); border-color: rgba(21,128,61,0.25); }
+.conn-pip.live::before { background: var(--positive); box-shadow: 0 0 0 3px rgba(21,128,61,0.15); animation: pulse 2.4s infinite; }
+.conn-pip.offline { color: var(--ink-3); }
+.conn-pip.offline::before { background: var(--ink-4); }
+
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+/* ─────────────────────────────────────────────────────────
+   PAGE
+   ───────────────────────────────────────────────────────── */
+.page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: clamp(40px, 6vw, 80px) var(--pad) 120px;
+}
+
+.view { display: none; }
+.view.active { display: block; }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.view.active > * { animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.view.active > *:nth-child(1) { animation-delay: 0.02s; }
+.view.active > *:nth-child(2) { animation-delay: 0.08s; }
+.view.active > *:nth-child(3) { animation-delay: 0.14s; }
+.view.active > *:nth-child(4) { animation-delay: 0.20s; }
+
+/* ─────────────────────────────────────────────────────────
+   HERO (front page)
+   ───────────────────────────────────────────────────────── */
+.hero {
+  padding: 32px 0 80px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 80px;
+}
+
+.hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 36px;
+}
+
+.hero-meta .dot { width: 4px; height: 4px; background: var(--ink-5); border-radius: 50%; }
+.hero-meta .accent { color: var(--signal); }
+
+.hero-headline {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: clamp(40px, 6vw, 76px);
+  line-height: 1.0;
+  letter-spacing: -0.04em;
+  color: var(--ink-1);
+  max-width: 18ch;
+  margin-bottom: 28px;
+  text-wrap: balance;
+}
+
+.hero-headline .em {
+  color: var(--signal);
+  font-weight: 500;
+}
+
+.hero-deck {
+  font-family: var(--sans);
+  font-weight: 400;
+  font-size: clamp(17px, 1.6vw, 20px);
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  color: var(--ink-2);
+  max-width: 60ch;
+}
+
+.hero-deck strong { color: var(--ink-1); font-weight: 600; }
+
+.hero-stats {
+  margin-top: 56px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+
+.hero-stat {
+  padding: 24px 24px 24px 0;
+  border-right: 1px solid var(--line);
+}
+.hero-stat:last-child { border-right: none; padding-right: 0; }
+.hero-stat:not(:first-child) { padding-left: 24px; }
+
+.hero-stat .label {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 12px;
+}
+
+.hero-stat .value {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 32px;
+  letter-spacing: -0.025em;
+  color: var(--ink-1);
+  font-feature-settings: 'tnum';
+  line-height: 1;
+}
+
+.hero-stat .value.signal { color: var(--signal); }
+.hero-stat .value.muted { color: var(--ink-4); }
+.hero-stat .value .sub {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-3);
+  margin-left: 6px;
+  letter-spacing: 0;
+}
+
+/* ─────────────────────────────────────────────────────────
+   SECTION
+   ───────────────────────────────────────────────────────── */
+.section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.section-title {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 28px;
+  letter-spacing: -0.025em;
+  color: var(--ink-1);
+}
+
+.section-sub {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--ink-3);
+  margin-top: 6px;
+}
+
+/* Filter — segmented pill control */
+.seg {
+  display: inline-flex;
+  background: var(--bg-elev);
+  border-radius: 8px;
+  padding: 3px;
+  border: 1px solid var(--line);
+}
+
+.seg-item {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 12.5px;
+  letter-spacing: -0.005em;
+  padding: 6px 14px;
+  border-radius: 6px;
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.seg-item:hover { color: var(--ink-1); }
+.seg-item.active { background: var(--bg); color: var(--ink-1); box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+
+/* ─────────────────────────────────────────────────────────
+   DIVERGENCE GRID
+   ───────────────────────────────────────────────────────── */
+.dgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.dcard {
+  background: var(--bg);
+  padding: 28px 28px 24px;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 240px;
+}
+
+.dcard:hover { background: var(--bg-elev); }
+
+.dcard-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dcard-sym {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+  color: var(--ink-1);
+}
+
+.dcard-asset {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-top: 3px;
+}
+
+.dcard-tag {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.dcard-tag.calm       { color: var(--ink-3); background: var(--bg-deep); }
+.dcard-tag.stressed   { color: var(--signal); background: var(--signal-bg); }
+.dcard-tag.dislocated { color: var(--bg); background: var(--signal); }
+
+.dcard-score {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 64px;
+  letter-spacing: -0.05em;
+  line-height: 0.9;
+  font-feature-settings: 'tnum';
+  margin-top: auto;
+  color: var(--ink-1);
+}
+
+.dcard-score.negative { color: var(--signal); }
+.dcard-score.positive { color: var(--positive); }
+
+.dcard-score-unit {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+
+.dcard-foot {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  font-family: var(--mono);
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-feature-settings: 'tnum';
+}
+
+.dcard-foot .cell .l {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.dcard-foot .cell .v {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-1);
+}
+
+.dcard-foot .cell .v.up { color: var(--signal); }
+
+.dcard-arrow {
+  position: absolute;
+  top: 26px;
+  right: 26px;
+  opacity: 0;
+  transition: all 0.2s ease;
+  color: var(--ink-3);
+}
+
+.dcard:hover .dcard-arrow { opacity: 1; transform: translate(2px, -2px); }
+
+/* ─────────────────────────────────────────────────────────
+   DOSSIER (event detail)
+   ───────────────────────────────────────────────────────── */
+.back-btn {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 13.5px;
+  letter-spacing: -0.005em;
+  color: var(--ink-3);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  margin-bottom: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 6px 6px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.back-btn:hover { color: var(--ink-1); background: var(--bg-elev); }
+
+.dossier {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 80px;
+  align-items: flex-start;
+}
+
+.dossier-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 0;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 24px;
+}
+
+.dossier-meta .pill {
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  margin-right: 8px;
+}
+
+.dossier-meta .pill.alert { color: var(--signal); border-color: var(--signal-line); background: var(--signal-bg); }
+.dossier-meta .sep { color: var(--ink-5); margin: 0 12px; }
+
+.dossier-head {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: clamp(36px, 4.5vw, 56px);
+  line-height: 1.0;
+  letter-spacing: -0.035em;
+  color: var(--ink-1);
+  margin-bottom: 24px;
+  text-wrap: balance;
+}
+
+.dossier-head .em { color: var(--signal); }
+
+.dossier-sub {
+  font-family: var(--sans);
+  font-weight: 400;
+  font-size: 19px;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  color: var(--ink-2);
+  max-width: 55ch;
+  margin-bottom: 56px;
+}
+
+.dossier-sub strong { color: var(--ink-1); font-weight: 600; }
+
+/* THE BIG NUMBER */
+.score-block {
+  padding: 32px 0 48px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 48px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 56px;
+  align-items: center;
+}
+
+.score-massive {
+  font-family: var(--sans);
+  font-weight: 400;
+  font-size: clamp(120px, 16vw, 240px);
+  letter-spacing: -0.08em;
+  line-height: 0.82;
+  color: var(--ink-1);
+  font-feature-settings: 'tnum';
+}
+
+.score-massive.negative { color: var(--signal); }
+.score-massive.positive { color: var(--positive); }
+
+.score-massive .sign {
+  font-weight: 300;
+  font-size: 0.4em;
+  vertical-align: 0.85em;
+  letter-spacing: 0;
+  margin-right: 0.05em;
+}
+
+.score-side {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-width: 240px;
+}
+
+.score-side .item .l {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 8px;
+}
+
+.score-side .item .v {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 28px;
+  letter-spacing: -0.02em;
+  color: var(--ink-1);
+  font-feature-settings: 'tnum';
+}
+
+.score-side .item .v.signal { color: var(--signal); }
+
+/* NARRATIVE */
+.brief-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-3);
+  margin-bottom: 24px;
+}
+
+.brief-meta .author {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-1);
+  font-weight: 600;
+}
+
+.brief-meta .author::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  background: var(--ink-1);
+  border-radius: 50%;
+  display: inline-block;
+  position: relative;
+}
+
+.brief-meta .divider {
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.brief-meta button {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 12px;
+  padding: 6px 12px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  letter-spacing: -0.005em;
+}
+
+.brief-meta button:hover:not(:disabled) { background: var(--ink-1); color: var(--bg); border-color: var(--ink-1); }
+.brief-meta button:disabled { opacity: 0.5; cursor: wait; }
+
+.brief-body {
+  font-family: var(--sans);
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+  color: var(--ink-2);
+  max-width: 64ch;
+}
+
+.brief-body p { margin-bottom: 18px; }
+.brief-body p:last-child { margin-bottom: 0; }
+.brief-body em { color: var(--signal); font-style: normal; font-weight: 500; }
+.brief-body strong { color: var(--ink-1); font-weight: 600; }
+
+.brief-foot {
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-soft);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+/* ANALOGS */
+.analogs {
+  margin-top: 72px;
+}
+
+.analog-list {
+  border-top: 1px solid var(--line);
+  margin-top: 24px;
+}
+
+.analog-row {
+  display: grid;
+  grid-template-columns: 32px 120px 1fr auto;
+  gap: 24px;
+  align-items: center;
+  padding: 20px 4px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.analog-row:hover {
+  background: var(--bg-elev);
+  padding-left: 16px;
+  padding-right: 16px;
+  border-radius: 6px;
+  border-color: transparent;
+}
+
+.analog-rank {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-4);
+  font-feature-settings: 'tnum';
+}
+
+.analog-date {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-1);
+  letter-spacing: -0.005em;
+}
+
+.analog-date .yr { color: var(--ink-3); font-weight: 500; margin-left: 4px; }
+
+.analog-label {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 17px;
+  letter-spacing: -0.015em;
+  color: var(--ink-1);
+}
+
+.analog-sim {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--signal);
+  font-feature-settings: 'tnum';
+  text-align: right;
+}
+
+.analog-sim .l {
+  display: block;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  margin-top: 2px;
+}
+
+/* SIDE RAIL */
+.side {
+  position: sticky;
+  top: 90px;
+}
+
+.side-block {
+  margin-bottom: 32px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--line);
+}
+
+.side-block:last-child { border-bottom: none; }
+
+.side-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 16px;
+}
+
+.side-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 0;
+  font-size: 13px;
+}
+
+.side-row .k {
+  font-family: var(--sans);
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.side-row .v {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--ink-1);
+  font-feature-settings: 'tnum';
+}
+
+.side-row .v.signal { color: var(--signal); }
+.side-row .v.positive { color: var(--positive); }
+
+.side-quote {
+  font-family: var(--sans);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  color: var(--ink-2);
+}
+
+.side-quote::before {
+  content: '';
+  display: block;
+  width: 24px;
+  height: 2px;
+  background: var(--signal);
+  margin-bottom: 14px;
+}
+
+/* ─────────────────────────────────────────────────────────
+   SUBSCRIPTIONS
+   ───────────────────────────────────────────────────────── */
+.subs-list {
+  margin-top: 32px;
+  border-top: 1px solid var(--line);
+}
+
+.sub-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto;
+  gap: 40px;
+  align-items: center;
+  padding: 28px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.sub-name {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  color: var(--ink-1);
+}
+
+.sub-tag {
+  font-family: var(--sans);
+  font-weight: 400;
+  font-size: 13.5px;
+  color: var(--ink-3);
+  margin-top: 4px;
+  letter-spacing: -0.005em;
+}
+
+.sub-conds { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.cond {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.cond.signal { color: var(--signal); border-color: var(--signal-line); background: var(--signal-bg); }
+.cond.positive { color: var(--positive); border-color: rgba(21,128,61,0.25); background: var(--positive-bg); }
+.cond.ink { color: var(--bg); background: var(--ink-1); border-color: var(--ink-1); }
+
+/* iOS-style toggle */
+.toggle {
+  width: 44px;
+  height: 26px;
+  background: var(--ink-5);
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.toggle.on { background: var(--ink-1); }
+
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  background: var(--bg);
+  border-radius: 50%;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.toggle.on::after { transform: translateX(18px); }
+
+/* ─────────────────────────────────────────────────────────
+   ARCHIVE (analog finder)
+   ───────────────────────────────────────────────────────── */
+.finder {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr auto;
+  gap: 0;
+  margin-top: 32px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.finder-field {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 18px;
+  border-right: 1px solid var(--line);
+}
+
+.finder-field:nth-child(3) { border-right: 1px solid var(--line); }
+
+.finder-field label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 6px;
+}
+
+.finder-field select,
+.finder-field input {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  color: var(--ink-1);
+  padding: 0;
+  cursor: pointer;
+  width: 100%;
+}
+
+.finder-field input { font-family: var(--mono); font-size: 14px; font-weight: 500; }
+
+.finder-btn {
+  margin: 4px;
+  background: var(--ink-1);
+  color: var(--bg);
+  border: none;
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 13.5px;
+  letter-spacing: -0.005em;
+  padding: 0 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.finder-btn:hover:not(:disabled) { background: var(--signal); }
+.finder-btn:disabled { opacity: 0.5; cursor: wait; }
+
+.finder-summary {
+  margin-top: 32px;
+  padding: 20px 24px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 32px;
+  align-items: center;
+}
+
+.finder-summary .lead {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 16px;
+  letter-spacing: -0.015em;
+  color: var(--ink-1);
+}
+
+.finder-summary .lead .sym {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--signal);
+  background: var(--signal-bg);
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin: 0 4px;
+}
+
+.finder-summary .stat .v {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  color: var(--ink-1);
+  font-feature-settings: 'tnum';
+}
+
+.finder-summary .stat .v.acc { color: var(--signal); }
+
+.finder-summary .stat .l {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+.finder-interp {
+  margin-top: 32px;
+  padding: 24px 28px;
+  background: var(--bg-elev);
+  border-left: 3px solid var(--signal);
+  border-radius: 0 8px 8px 0;
+  font-family: var(--sans);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.55;
+  letter-spacing: -0.01em;
+  color: var(--ink-2);
+}
+
+.finder-interp em { color: var(--signal); font-style: normal; font-weight: 600; }
+.finder-interp strong { color: var(--ink-1); font-weight: 600; }
+
+/* ─────────────────────────────────────────────────────────
+   LOADING / EMPTY
+   ───────────────────────────────────────────────────────── */
+.loading {
+  padding: 80px 24px;
+  text-align: center;
+  font-family: var(--sans);
+  font-weight: 400;
+  font-size: 15px;
+  color: var(--ink-3);
+}
+
+.skel {
+  background: linear-gradient(90deg, var(--bg-elev) 0%, var(--bg-deep) 50%, var(--bg-elev) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite linear;
+  min-height: 240px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ─────────────────────────────────────────────────────────
+   TOAST
+   ───────────────────────────────────────────────────────── */
+.toasts {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 380px;
+}
+
+.toast {
+  background: var(--ink-1);
+  color: var(--bg);
+  padding: 14px 18px 14px 16px;
+  border-radius: 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08);
+  animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.toast-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--signal);
+  border-radius: 50%;
+  margin-top: 8px;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 4px rgba(217,32,32,0.2);
+}
+
+.toast-body { flex: 1; min-width: 0; }
+
+.toast-head {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.55);
+  margin-bottom: 4px;
+}
+
+.toast-msg {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  color: var(--bg);
+  line-height: 1.4;
+}
+
+.toast-msg .em { color: var(--signal); font-weight: 600; }
+.toast-msg .num { font-family: var(--mono); font-weight: 600; font-feature-settings: 'tnum'; }
+
+.toast-close {
+  font-family: var(--mono);
+  font-size: 16px;
+  color: rgba(255,255,255,0.4);
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  transition: color 0.15s ease;
+}
+
+.toast-close:hover { color: var(--bg); }
+
+/* ─────────────────────────────────────────────────────────
+   RESPONSIVE
+   ───────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .dossier { grid-template-columns: 1fr; gap: 56px; }
+  .side { position: static; }
+  .score-block { grid-template-columns: 1fr; gap: 32px; }
+  .hero-stats { grid-template-columns: repeat(2, 1fr); }
+  .hero-stat { border-right: none; border-bottom: 1px solid var(--line); }
+  .hero-stat:nth-child(2) { border-right: 1px solid var(--line); }
+}
+
+@media (max-width: 720px) {
+  .nav-center { display: none; }
+  .hero-stats { grid-template-columns: 1fr; }
+  .hero-stat { border-right: none !important; padding: 20px 0 !important; }
+  .dgrid { grid-template-columns: 1fr; }
+  .finder { grid-template-columns: 1fr; }
+  .finder-field { border-right: none; border-bottom: 1px solid var(--line); }
+  .sub-row { grid-template-columns: 1fr; gap: 16px; }
+  .analog-row { grid-template-columns: 30px 1fr auto; }
+  .analog-row > :nth-child(2) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ═══════════════════════════════════════════════════════
+       NAV
+       ═══════════════════════════════════════════════════════ -->
+  <nav class="nav">
+    <div class="brand" data-view="dashboard">
+      <div class="brand-mark"></div>
+      <span class="brand-name">Divergence<span class="dot">.</span></span>
+    </div>
+    <div class="nav-center">
+      <div class="nav-item active" data-view="dashboard">Overview</div>
+      <div class="nav-item" data-view="subs">Subscriptions</div>
+      <div class="nav-item" data-view="finder">Archive</div>
+      <div class="nav-item" data-view="about">About</div>
+    </div>
+    <div class="nav-right">
+      <span class="nav-clock" id="clock">--:--:--</span>
+      <span class="conn-pip" id="conn-pip">Connecting</span>
+    </div>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════════════════
+       PAGE
+       ═══════════════════════════════════════════════════════ -->
+  <div class="page">
+
+    <!-- DASHBOARD -->
+    <div class="view active" id="view-dashboard">
+
+      <section class="hero">
+        <div class="hero-meta">
+          <span class="accent">Liquidity Intelligence</span>
+          <span class="dot"></span>
+          <span id="hero-date">—</span>
+          <span class="dot"></span>
+          <span id="hero-status">Reading the day's signal</span>
+        </div>
+        <h1 class="hero-headline" id="hero-headline">Reading the day's <span class="em">liquidity</span> conditions.</h1>
+        <p class="hero-deck" id="hero-deck">Fetching the latest divergence events from the desk.</p>
+
+        <div class="hero-stats" id="hero-stats">
+          <div class="hero-stat">
+            <div class="label">Instruments</div>
+            <div class="value muted" id="m-instr">—</div>
+          </div>
+          <div class="hero-stat">
+            <div class="label">Negative</div>
+            <div class="value" id="m-neg">—</div>
+          </div>
+          <div class="hero-stat">
+            <div class="label">Most extreme</div>
+            <div class="value" id="m-ext">—</div>
+          </div>
+          <div class="hero-stat">
+            <div class="label">Composite Δ</div>
+            <div class="value" id="m-delta">—</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <div>
+            <div class="section-title">Today's divergences</div>
+            <div class="section-sub">Ranked by absolute z-score · ±2σ flagged</div>
+          </div>
+          <div class="seg" id="filter-bar">
+            <div class="seg-item active" data-ac="">All</div>
+            <div class="seg-item" data-ac="rates">Rates</div>
+            <div class="seg-item" data-ac="mbs">MBS</div>
+            <div class="seg-item" data-ac="credit">Credit</div>
+            <div class="seg-item" data-ac="swaps">Swaps</div>
+          </div>
+        </div>
+        <div class="dgrid" id="dgrid">
+          <div class="dcard skel"></div>
+          <div class="dcard skel"></div>
+          <div class="dcard skel"></div>
+          <div class="dcard skel"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- DETAIL -->
+    <div class="view" id="view-detail">
+      <button class="back-btn" id="back-btn">← Back</button>
+      <div id="dossier"></div>
+    </div>
+
+    <!-- SUBSCRIPTIONS -->
+    <div class="view" id="view-subs">
+      <section class="hero" style="padding-bottom: 48px; margin-bottom: 48px;">
+        <div class="hero-meta">
+          <span class="accent">Alerts</span>
+          <span class="dot"></span>
+          <span>Composable conditions, deduped per event</span>
+        </div>
+        <h1 class="hero-headline">A standing order for the <span class="em">important</span> signals.</h1>
+        <p class="hero-deck">Direction, magnitude, asset class, channel. The engine routes any matching event to the destination of your choosing, deduplicated per event and rate-limited per cooldown.</p>
+      </section>
+
+      <div class="section-head">
+        <div>
+          <div class="section-title">Standing orders</div>
+          <div class="section-sub"><span id="subs-count">—</span> configured</div>
+        </div>
+      </div>
+
+      <div class="subs-list" id="subs-list">
+        <div class="loading">Loading subscriptions…</div>
+      </div>
+    </div>
+
+    <!-- ARCHIVE -->
+    <div class="view" id="view-finder">
+      <section class="hero" style="padding-bottom: 48px; margin-bottom: 48px;">
+        <div class="hero-meta">
+          <span class="accent">Archive</span>
+          <span class="dot"></span>
+          <span>Historical analog search</span>
+        </div>
+        <h1 class="hero-headline">When has today <span class="em">happened</span> before?</h1>
+        <p class="hero-deck">Choose an instrument and a date. The archive returns the closest historical days by cross-asset feature similarity — <strong>pgvector cosine search</strong>, excluding any match within thirty days of the query.</p>
+      </section>
+
+      <div class="finder">
+        <div class="finder-field">
+          <label>Instrument</label>
+          <select id="finder-instrument"></select>
+        </div>
+        <div class="finder-field">
+          <label>Target date</label>
+          <input type="date" id="finder-date">
+        </div>
+        <div class="finder-field">
+          <label>Nearest k</label>
+          <select id="finder-k">
+            <option value="3">3</option>
+            <option value="5" selected>5</option>
+            <option value="10">10</option>
+            <option value="20">20</option>
+          </select>
+        </div>
+        <button class="finder-btn" id="finder-btn">Search</button>
+      </div>
+
+      <div id="finder-results" style="margin-top: 32px;">
+        <div class="loading">Choose an instrument and a date, then run the search.</div>
+      </div>
+    </div>
+
+    <!-- ABOUT -->
+    <div class="view" id="view-about">
+      <section class="hero" style="padding-bottom: 0; border-bottom: none; margin-bottom: 0;">
+        <div class="hero-meta">
+          <span class="accent">About</span>
+          <span class="dot"></span>
+          <span>The product</span>
+        </div>
+        <h1 class="hero-headline">Reading <span class="em">execution</span> against expectation.</h1>
+        <div class="brief-body" style="margin-top: 40px; max-width: 64ch;">
+          <p>Conventional liquidity measures rely on bid-ask spreads, implied volatility, and dealer commentary — signals of what markets are <em>pricing</em>. Divergence reads what they are <em>executing</em>, and treats the gap between the two as the most informative signal on a session.</p>
+          <p>The framing borrows from the Tradeweb Liquidity Cost Index: liquidity measured in basis points actually traded, not implied. The asymmetry insight — that execution stressed with implied calm is the historically dangerous regime, not the inverse — is the central thesis.</p>
+          <p>Built on FastAPI, PostgreSQL with TimescaleDB and pgvector, and <strong>Claude Opus 4.7</strong> for narrative authorship. Source available under MIT license.</p>
+        </div>
+      </section>
+    </div>
+
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+const API_BASE = window.DIVERGENCE_API || 'http://localhost:8000';
+const WS_BASE  = API_BASE.replace(/^http/, 'ws');
+const API_KEY  = window.DIVERGENCE_API_KEY || 'demo-api-key-change-me';
+
+const state = { online: false, divergences: [], filter: '', ws: null };
+
+function fmtScore(n) {
+  const a = Math.abs(n).toFixed(2);
+  return n < 0 ? `(${a})` : `+${a}`;
+}
+function fmtZ(n) { return (n > 0 ? '+' : '') + n.toFixed(2) + 'σ'; }
+
+const api = {
+  async health() { const r = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(2000) }); if (!r.ok) throw new Error(); return r.json(); },
+  async current(ac = '') {
+    const url = new URL(`${API_BASE}/divergence/current`);
+    if (ac) url.searchParams.set('asset_class', ac);
+    url.searchParams.set('limit', '20');
+    const r = await fetch(url); if (!r.ok) throw new Error('current'); return r.json();
+  },
+  async event(id)   { const r = await fetch(`${API_BASE}/divergence/${id}`); return r.json(); },
+  async narrative(id, force = false) { const r = await fetch(`${API_BASE}/divergence/${id}/narrative?force_regenerate=${force}`, { method: 'POST' }); return r.json(); },
+  async analogs(id) { const r = await fetch(`${API_BASE}/divergence/${id}/analogs?k=5`); return r.json(); },
+  async subscriptions() { const r = await fetch(`${API_BASE}/subscriptions/`, { headers: { 'X-API-Key': API_KEY } }); if (!r.ok) throw new Error(); return r.json(); },
+  async toggleSub(id, active) { return (await fetch(`${API_BASE}/subscriptions/${id}`, { method: 'PATCH', headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ active }) })).json(); },
+  async instruments() { const r = await fetch(`${API_BASE}/instruments`); if (!r.ok) throw new Error(); return r.json(); },
+  async searchAnalogs(symbol, targetDate, k) {
+    const url = new URL(`${API_BASE}/analogs/search`);
+    url.searchParams.set('instrument_symbol', symbol);
+    url.searchParams.set('target_date', targetDate);
+    url.searchParams.set('k', String(k));
+    const r = await fetch(url); if (!r.ok) throw new Error(); return r.json();
+  },
+};
+
+const MOCK = {
+  divergences: [
+    { id: 1, ts: new Date().toISOString(), instrument_id: 3, instrument_symbol: 'FNCL_30Y', instrument_asset_class: 'mbs',    implied_z: 0.21, realized_z: 3.63, divergence_score: -3.42, regime_label: 'dislocated', lookback_days: 252 },
+    { id: 2, ts: new Date().toISOString(), instrument_id: 1, instrument_symbol: 'UST_10Y',  instrument_asset_class: 'rates',  implied_z: 2.41, realized_z: 0.23, divergence_score:  2.18, regime_label: 'stressed',   lookback_days: 252 },
+    { id: 3, ts: new Date().toISOString(), instrument_id: 4, instrument_symbol: 'CDX_IG',   instrument_asset_class: 'credit', implied_z: 2.32, realized_z: 0.38, divergence_score:  1.94, regime_label: 'stressed',   lookback_days: 252 },
+    { id: 4, ts: new Date().toISOString(), instrument_id: 6, instrument_symbol: 'USD_SW_5Y',instrument_asset_class: 'swaps',  implied_z: 2.18, realized_z: 0.15, divergence_score:  2.03, regime_label: 'stressed',   lookback_days: 252 },
+    { id: 5, ts: new Date().toISOString(), instrument_id: 2, instrument_symbol: 'UST_30Y',  instrument_asset_class: 'rates',  implied_z: 0.58, realized_z: 0.27, divergence_score:  0.31, regime_label: 'calm',       lookback_days: 252 },
+    { id: 6, ts: new Date().toISOString(), instrument_id: 5, instrument_symbol: 'CDX_HY',   instrument_asset_class: 'credit', implied_z: 1.12, realized_z: 0.28, divergence_score:  0.84, regime_label: 'calm',       lookback_days: 252 },
+  ],
+  analogs: [
+    { event_id: 101, ts: '2026-01-09T14:00:00Z', instrument_symbol: 'FNCL_30Y', divergence_score: -3.51, regime_label: 'dislocated', label: 'GSE $200B MBS purchase order',       similarity: 0.91 },
+    { event_id: 102, ts: '2024-08-14T14:00:00Z', instrument_symbol: 'FNCL_30Y', divergence_score: -2.18, regime_label: 'stressed',   label: 'Pre-Jackson Hole MBS basis squeeze', similarity: 0.78 },
+    { event_id: 103, ts: '2023-03-13T14:00:00Z', instrument_symbol: 'FNCL_30Y', divergence_score: -2.84, regime_label: 'dislocated', label: 'SVB weekend — rates flight',          similarity: 0.66 },
+    { event_id: 104, ts: '2022-09-26T14:00:00Z', instrument_symbol: 'FNCL_30Y', divergence_score: -2.04, regime_label: 'stressed',   label: 'UK gilt crisis spillover',            similarity: 0.61 },
+    { event_id: 105, ts: '2020-03-12T14:00:00Z', instrument_symbol: 'FNCL_30Y', divergence_score: -4.12, regime_label: 'dislocated', label: 'COVID liquidity dislocation',         similarity: 0.54 },
+  ],
+  narrative: {
+    body: `The mortgage market is executing under far more strain than option-implied volatility suggests. FNCL 30Y T-Cost printed 4.2 bps today against a one-year median of 0.72 bps — a *+487% dislocation* — while MOVE-implied vol sits within its monthly range. Composite width on benchmark size widened to 2.1 bps, more than three sigma above trend. Treasuries, by contrast, executed at +0.18σ on T-Cost: orderly.\n\nThe closest historical analog is *January 9, 2026*, when the order for Fannie Mae and Freddie Mac to purchase $200B in MBS triggered a similar one-sided spike. Today's pattern matches that profile at 0.91 cosine similarity, suggesting demand-side anticipation rather than broad market stress.\n\nThis is the asymmetric setup that matters: **execution stressed, implied calm.** Historically the dangerous configuration. Tomorrow's invalidators are MOVE catching up or Treasury T-Cost beginning to drift toward MBS — either would reclassify the regime from instrument-specific dislocation to broader rates illiquidity.`,
+    model: 'mock', prompt_version: 'v3-2026-05', latency_ms: 0, generated_at: new Date().toISOString(),
+  },
+  subscriptions: [
+    { id: 1, name: 'Hidden execution stress', tagline: 'Negative divergences — the dangerous setup', direction: 'negative', min_abs_score: 2.5, asset_classes: null, regime_labels: ['dislocated'], channel: 'websocket', cooldown_min: 60, active: true },
+    { id: 2, name: 'Rates fade signals', tagline: 'Markets pricing more fear than execution', direction: 'positive', min_abs_score: 2.0, asset_classes: ['rates','swaps'], channel: 'webhook', cooldown_min: 120, active: true },
+    { id: 3, name: 'Credit early warning', tagline: 'CDX-specific · currently paused', direction: 'either', min_abs_score: 1.8, asset_classes: ['credit'], channel: 'websocket', cooldown_min: 240, active: false },
+  ],
+  instruments: [
+    { id: 1, symbol: 'UST_10Y',   asset_class: 'rates',  display_name: 'UST 10Y' },
+    { id: 2, symbol: 'UST_30Y',   asset_class: 'rates',  display_name: 'UST 30Y' },
+    { id: 3, symbol: 'FNCL_30Y',  asset_class: 'mbs',    display_name: 'FNCL 30Y · TBA' },
+    { id: 4, symbol: 'CDX_IG',    asset_class: 'credit', display_name: 'CDX Investment Grade' },
+    { id: 5, symbol: 'CDX_HY',    asset_class: 'credit', display_name: 'CDX High Yield' },
+    { id: 6, symbol: 'USD_SW_5Y', asset_class: 'swaps',  display_name: 'USD Swap 5Y' },
+  ],
+};
+
+async function probeAPI() {
+  try { await api.health(); state.online = true; }
+  catch { state.online = false; }
+  const pip = document.getElementById('conn-pip');
+  pip.textContent = state.online ? 'Live' : 'Demo';
+  pip.className = `conn-pip ${state.online ? 'live' : 'offline'}`;
+}
+
+function renderHero(items) {
+  const ext = items.find(d => Math.abs(d.divergence_score) > 2.5);
+  const neg = items.filter(d => d.divergence_score < -1.5);
+  const pos = items.filter(d => d.divergence_score > 1.5);
+
+  let headline, deck, status;
+  if (ext && ext.divergence_score < 0) {
+    headline = `<span class="em">${ext.instrument_symbol}</span> is executing under strain the market hasn't priced.`;
+    deck = `<strong>${neg.length} negative divergence${neg.length === 1 ? '' : 's'}</strong> detected. The tape is dislocating against an orderly cross-asset backdrop — historically the dangerous configuration. ${pos.length > 0 ? `${pos.length} other instruments are pricing more stress than their execution validates.` : ''}`;
+    status = 'Dislocation observed';
+  } else if (ext) {
+    headline = `Markets are pricing <span class="em">stress</span> the tape doesn't validate.`;
+    deck = `<strong>${pos.length} positive divergence${pos.length === 1 ? '' : 's'}</strong> above the 2σ threshold. Implied composites running hot against orderly execution — historically a fade signal, but cross-asset breadth matters before treating it as one.`;
+    status = 'Implied stress elevated';
+  } else if (neg.length > 0) {
+    headline = `Execution stressed, <span class="em">implied calm.</span>`;
+    deck = `<strong>${neg.length} negative divergence${neg.length === 1 ? '' : 's'}</strong> — historically the more dangerous configuration. Tomorrow's read depends on whether implied volatility catches up to what the tape is already showing.`;
+    status = 'Watch tomorrow';
+  } else if (pos.length > 0) {
+    headline = `Implied stress runs <span class="em">ahead</span> of the tape.`;
+    deck = `${pos.length} instruments are pricing elevated stress against orderly execution. Composites diverge but no single reading exceeds the extreme threshold.`;
+    status = 'Implied ahead of tape';
+  } else {
+    headline = `Liquidity is <span class="em">orderly</span> across the complex.`;
+    deck = `No active divergences above the 1.5σ threshold. Implied and realized composites aligned within typical ranges — the kind of quiet worth noting precisely because it isn't always.`;
+    status = 'All orderly';
+  }
+  document.getElementById('hero-headline').innerHTML = headline;
+  document.getElementById('hero-deck').innerHTML = deck;
+  document.getElementById('hero-status').textContent = status;
+}
+
+function renderStats(items) {
+  const neg = items.filter(d => d.divergence_score < -1.5).length;
+  const ext = items.length ? items.reduce((a, b) => Math.abs(a.divergence_score) > Math.abs(b.divergence_score) ? a : b) : null;
+  const cimp = items.reduce((s, d) => s + d.implied_z, 0) / (items.length || 1);
+  const crea = items.reduce((s, d) => s + d.realized_z, 0) / (items.length || 1);
+  const delta = crea - cimp;
+
+  document.getElementById('m-instr').innerHTML = items.length;
+  document.getElementById('m-instr').className = 'value';
+  const negEl = document.getElementById('m-neg');
+  negEl.innerHTML = neg;
+  negEl.className = neg > 0 ? 'value signal' : 'value muted';
+  document.getElementById('m-ext').innerHTML = ext
+    ? `<span class="${ext.divergence_score < 0 ? 'signal' : ''}">${fmtScore(ext.divergence_score)}</span><span class="sub">${ext.instrument_symbol}</span>`
+    : '—';
+  document.getElementById('m-ext').className = ext && ext.divergence_score < 0 ? 'value' : 'value';
+  document.getElementById('m-delta').innerHTML = `<span class="${Math.abs(delta) > 1 ? 'signal' : ''}">${fmtZ(delta)}</span>`;
+  document.getElementById('m-delta').className = 'value';
+}
+
+async function loadDashboard() {
+  const grid = document.getElementById('dgrid');
+  try {
+    const data = state.online ? await api.current(state.filter) : MOCK.divergences.filter(d => !state.filter || d.instrument_asset_class === state.filter);
+    state.divergences = data;
+    renderHero(data);
+    renderStats(data);
+    renderGrid(data);
+  } catch (e) {
+    grid.innerHTML = `<div class="loading" style="grid-column: 1/-1;">Failed to load: ${e.message}</div>`;
+  }
+}
+
+function renderGrid(items) {
+  const grid = document.getElementById('dgrid');
+  if (items.length === 0) {
+    grid.innerHTML = `<div class="loading" style="grid-column: 1/-1;">No divergences match the current filter.</div>`;
+    return;
+  }
+  grid.innerHTML = items.map(d => {
+    const score = d.divergence_score;
+    const cls = score < 0 ? 'negative' : score > 0 ? 'positive' : '';
+    return `
+      <article class="dcard" data-id="${d.id}">
+        <div class="dcard-head">
+          <div>
+            <div class="dcard-sym">${d.instrument_symbol.replace(/_/g, ' ')}</div>
+            <div class="dcard-asset">${d.instrument_asset_class}</div>
+          </div>
+          <div class="dcard-tag ${d.regime_label}">${d.regime_label}</div>
+        </div>
+        <div>
+          <div class="dcard-score ${cls}">${fmtScore(score)}</div>
+          <div class="dcard-score-unit">σ divergence</div>
+        </div>
+        <div class="dcard-foot">
+          <div class="cell">
+            <div class="l">Implied</div>
+            <div class="v ${d.implied_z > 1.5 ? 'up' : ''}">${fmtZ(d.implied_z)}</div>
+          </div>
+          <div class="cell">
+            <div class="l">Realized</div>
+            <div class="v ${d.realized_z > 1.5 ? 'up' : ''}">${fmtZ(d.realized_z)}</div>
+          </div>
+        </div>
+        <svg class="dcard-arrow" width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M3 11L11 3M11 3H5M11 3V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </article>
+    `;
+  }).join('');
+  grid.querySelectorAll('.dcard').forEach(el => el.addEventListener('click', () => loadDetail(+el.dataset.id)));
+}
+
+async function loadDetail(eventId) {
+  switchView('detail');
+  const root = document.getElementById('dossier');
+  root.innerHTML = '<div class="loading">Loading dossier…</div>';
+
+  try {
+    let event, narrative, analogs;
+    if (state.online) {
+      [event, narrative, analogs] = await Promise.all([
+        api.event(eventId), api.narrative(eventId), api.analogs(eventId),
+      ]);
+    } else {
+      event = state.divergences.find(d => d.id === eventId) || MOCK.divergences[0];
+      narrative = MOCK.narrative;
+      analogs = MOCK.analogs;
+    }
+    renderDossier(event, narrative, analogs);
+  } catch (e) {
+    root.innerHTML = `<div class="loading">Failed to load: ${e.message}</div>`;
+  }
+}
+
+function renderDossier(event, narrative, analogs) {
+  const score = event.divergence_score;
+  const cls = score < 0 ? 'negative' : score > 0 ? 'positive' : '';
+  const sign = score < 0 ? '−' : '+';
+  const absStr = Math.abs(score).toFixed(2);
+
+  let headline;
+  if (score < -2.5) headline = `<span class="em">${event.instrument_symbol.replace(/_/g, ' ')}</span> executing under three-sigma strain.`;
+  else if (score > 2.5) headline = `<span class="em">${event.instrument_symbol.replace(/_/g, ' ')}</span> priced for stress · tape orderly.`;
+  else if (score < -1.5) headline = `<span class="em">${event.instrument_symbol.replace(/_/g, ' ')}</span> executing under strain.`;
+  else if (score > 1.5) headline = `<span class="em">${event.instrument_symbol.replace(/_/g, ' ')}</span> pricing elevated stress.`;
+  else headline = `<span class="em">${event.instrument_symbol.replace(/_/g, ' ')}</span> trading within tolerance.`;
+
+  const sub = score < -1.5
+    ? `The market is <strong>executing</strong> under strain that its options pricing does not yet acknowledge.`
+    : score > 1.5
+    ? `The market is <strong>priced</strong> for stress that its execution does not validate.`
+    : `Implied and realized composites are aligned. No actionable divergence today.`;
+
+  const narrativeBody = narrative.body
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .split('\n\n')
+    .map(p => `<p>${p.trim()}</p>`)
+    .join('');
+
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const eventDate = new Date(event.ts);
+  const isExtreme = Math.abs(score) > 2.5;
+
+  document.getElementById('dossier').innerHTML = `
+    <div class="dossier">
+      <article>
+        <div class="dossier-meta">
+          ${isExtreme ? `<span class="pill alert">${event.regime_label}</span>` : `<span class="pill">${event.regime_label}</span>`}
+          <span>File ${String(event.id).padStart(4, '0')}</span>
+          <span class="sep">·</span>
+          <span>${event.instrument_symbol} · ${(event.instrument_asset_class || '').toUpperCase()}</span>
+          <span class="sep">·</span>
+          <span>${monthNames[eventDate.getMonth()]} ${eventDate.getDate()}, ${eventDate.getFullYear()} · ${eventDate.toISOString().slice(11, 16)} UTC</span>
+        </div>
+
+        <h1 class="dossier-head">${headline}</h1>
+        <p class="dossier-sub">${sub}</p>
+
+        <section class="score-block">
+          <div class="score-massive ${cls}"><span class="sign">${sign}</span>${absStr}</div>
+          <div class="score-side">
+            <div class="item">
+              <div class="l">Implied composite</div>
+              <div class="v ${event.implied_z > 1.5 ? 'signal' : ''}">${fmtZ(event.implied_z)}</div>
+            </div>
+            <div class="item">
+              <div class="l">Realized composite</div>
+              <div class="v ${event.realized_z > 1.5 ? 'signal' : ''}">${fmtZ(event.realized_z)}</div>
+            </div>
+            <div class="item">
+              <div class="l">Lookback window</div>
+              <div class="v">${event.lookback_days} days</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="brief">
+          <div class="brief-meta">
+            <span class="author">Claude Opus 4.7</span>
+            <span>Prompt ${narrative.prompt_version}</span>
+            <span class="divider"></span>
+            <button id="regen-btn">↻ Regenerate</button>
+          </div>
+          <div class="brief-body">${narrativeBody}</div>
+          <div class="brief-foot">
+            <span>Generated ${narrative.generated_at ? new Date(narrative.generated_at).toISOString().slice(11, 19) : '—'} UTC</span>
+            <span>Latency ${narrative.latency_ms || 0}ms</span>
+            <span>${analogs.length} analog${analogs.length === 1 ? '' : 's'} consulted</span>
+          </div>
+        </section>
+
+        <section class="analogs">
+          <div class="section-head">
+            <div>
+              <div class="section-title">Historical analogs</div>
+              <div class="section-sub">pgvector · cosine · ±30-day exclusion</div>
+            </div>
+          </div>
+          <div class="analog-list">
+            ${analogs.length === 0 ? '<div class="loading">No analogs found.</div>' : analogs.map((a, i) => {
+              const dt = new Date(a.ts);
+              return `
+                <div class="analog-row" data-id="${a.event_id}">
+                  <div class="analog-rank">${String(i + 1).padStart(2, '0')}</div>
+                  <div class="analog-date">${monthNames[dt.getMonth()]} ${dt.getDate()}<span class="yr">${dt.getFullYear()}</span></div>
+                  <div class="analog-label">${a.label || '(unlabeled)'}</div>
+                  <div class="analog-sim">${a.similarity.toFixed(2)}<span class="l">cosine</span></div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </section>
+      </article>
+
+      <aside class="side">
+        <div class="side-block">
+          <div class="side-title">Components</div>
+          <div class="side-row"><span class="k">Implied z</span><span class="v ${event.implied_z > 1.5 ? 'signal' : ''}">${fmtZ(event.implied_z)}</span></div>
+          <div class="side-row"><span class="k">Realized z</span><span class="v ${event.realized_z > 1.5 ? 'signal' : ''}">${fmtZ(event.realized_z)}</span></div>
+          <div class="side-row"><span class="k">Divergence</span><span class="v ${cls === 'negative' ? 'signal' : ''}">${fmtScore(score)}</span></div>
+          <div class="side-row"><span class="k">Regime</span><span class="v ${event.regime_label === 'dislocated' ? 'signal' : ''}">${event.regime_label}</span></div>
+        </div>
+        <div class="side-block">
+          <div class="side-title">Reading</div>
+          <div class="side-quote">${
+            score < -1.5 ? `Execution stressed while implied signals stay calm — historically the more dangerous setup. Watch tomorrow for implied repricing.` :
+            score >  1.5 ? `Markets pricing more fear than execution validates — historically a fade signal, though not always. Cross-asset breadth determines which.` :
+            `Both sides aligned. Flagged for completeness, not for action.`
+          }</div>
+        </div>
+        <div class="side-block">
+          <div class="side-title">Filed under</div>
+          <div class="side-row"><span class="k">Asset class</span><span class="v">${(event.instrument_asset_class || '').toUpperCase()}</span></div>
+          <div class="side-row"><span class="k">Threshold</span><span class="v">2.0σ</span></div>
+          <div class="side-row"><span class="k">Prompt</span><span class="v">${narrative.prompt_version}</span></div>
+        </div>
+      </aside>
+    </div>
+  `;
+
+  document.getElementById('regen-btn')?.addEventListener('click', async () => {
+    if (!state.online) { alert('Regenerate requires the live API.'); return; }
+    const btn = document.getElementById('regen-btn');
+    btn.textContent = 'Generating…'; btn.disabled = true;
+    try {
+      const n = await api.narrative(event.id, true);
+      renderDossier(event, n, analogs);
+    } catch (e) { btn.textContent = 'Retry'; btn.disabled = false; }
+  });
+
+  document.querySelectorAll('.analog-row').forEach(r => {
+    r.addEventListener('click', () => loadDetail(+r.dataset.id));
+  });
+}
+
+async function loadSubscriptions() {
+  try {
+    const subs = state.online ? await api.subscriptions() : MOCK.subscriptions;
+    document.getElementById('subs-count').textContent = subs.length;
+    renderSubs(subs);
+  } catch (e) {
+    document.getElementById('subs-list').innerHTML = `<div class="loading">Failed: ${e.message}</div>`;
+  }
+}
+
+function renderSubs(subs) {
+  const list = document.getElementById('subs-list');
+  list.innerHTML = subs.map(s => {
+    const dirClass = s.direction === 'negative' ? 'signal' : s.direction === 'positive' ? 'positive' : '';
+    const dirLabel = s.direction === 'negative' ? 'Negative' : s.direction === 'positive' ? 'Positive' : 'Either';
+    const conditions = [
+      `<span class="cond ${dirClass}">${dirLabel} dir</span>`,
+      `<span class="cond">|z| ≥ ${s.min_abs_score}</span>`,
+      s.asset_classes?.length ? `<span class="cond">${s.asset_classes.join(' · ').toUpperCase()}</span>` : `<span class="cond">All assets</span>`,
+      s.regime_labels?.length ? `<span class="cond signal">${s.regime_labels.join(', ')}</span>` : '',
+      `<span class="cond">${s.cooldown_min}m cooldown</span>`,
+      `<span class="cond ink">→ ${s.channel}</span>`,
+    ].filter(Boolean).join('');
+
+    return `
+      <div class="sub-row" data-id="${s.id}">
+        <div>
+          <div class="sub-name">${s.name}</div>
+          <div class="sub-tag">${s.tagline || (s.direction === 'negative' ? 'The dangerous setup' : s.direction === 'positive' ? 'Fade-the-fear opportunities' : 'Bidirectional')}</div>
+        </div>
+        <div class="sub-conds">${conditions}</div>
+        <div class="toggle ${s.active ? 'on' : ''}" data-id="${s.id}" data-active="${s.active}"></div>
+      </div>
+    `;
+  }).join('');
+
+  list.querySelectorAll('.toggle').forEach(t => {
+    t.addEventListener('click', async e => {
+      e.stopPropagation();
+      const id = +t.dataset.id;
+      const newActive = t.dataset.active !== 'true';
+      t.classList.toggle('on', newActive);
+      t.dataset.active = newActive;
+      if (state.online) { try { await api.toggleSub(id, newActive); } catch {} }
+    });
+  });
+}
+
+let finderInit = false;
+async function loadFinder() {
+  if (!finderInit) {
+    const sel = document.getElementById('finder-instrument');
+    try {
+      const instruments = state.online ? await api.instruments() : MOCK.instruments;
+      sel.innerHTML = instruments.map(i => `<option value="${i.symbol}">${i.display_name}</option>`).join('');
+      if (instruments.find(i => i.symbol === 'FNCL_30Y')) sel.value = 'FNCL_30Y';
+    } catch { sel.innerHTML = '<option>Failed to load</option>'; }
+    document.getElementById('finder-date').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('finder-btn').addEventListener('click', runFinder);
+    finderInit = true;
+  }
+}
+
+async function runFinder() {
+  const symbol = document.getElementById('finder-instrument').value;
+  const dateStr = document.getElementById('finder-date').value;
+  const k = +document.getElementById('finder-k').value;
+  const results = document.getElementById('finder-results');
+  const btn = document.getElementById('finder-btn');
+
+  if (!symbol || !dateStr) return;
+
+  btn.disabled = true; btn.textContent = 'Searching…';
+  results.innerHTML = '<div class="loading">Consulting the archive…</div>';
+
+  try {
+    let analogs;
+    if (state.online) analogs = await api.searchAnalogs(symbol, new Date(dateStr + 'T14:00:00Z').toISOString(), k);
+    else analogs = MOCK.analogs.slice(0, k);
+    renderFinderResults(symbol, dateStr, analogs);
+  } catch (e) {
+    results.innerHTML = `<div class="loading">No analogs found. Try a date with scored data (last 30 days in the seeded set).</div>`;
+  } finally { btn.disabled = false; btn.textContent = 'Search'; }
+}
+
+function renderFinderResults(symbol, queryDate, analogs) {
+  const results = document.getElementById('finder-results');
+  if (analogs.length === 0) {
+    results.innerHTML = `<div class="loading">No analogs found for ${symbol} on ${queryDate}.</div>`;
+    return;
+  }
+  const top = analogs[0];
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  const interpret = top.similarity > 0.85
+    ? `The top match is a <em>strong analog</em> at ${top.similarity.toFixed(2)} cosine. The day's cross-asset shape closely resembles <strong>${top.label || 'that historical event'}</strong> — if the prior episode resolved in a known way, today's read carries similar implications.`
+    : top.similarity > 0.65
+    ? `The top match is a <em>moderate analog</em> at ${top.similarity.toFixed(2)} cosine. The pattern rhymes with <strong>${top.label || 'that historical event'}</strong> but isn't a clean fit. Examine the differences as much as the similarities.`
+    : `<em>No strong historical analog</em> — top similarity ${top.similarity.toFixed(2)}. Today's cross-asset shape is closer to a novel configuration than to any well-known prior. Handle with extra caution; don't anchor too hard on the matches below.`;
+
+  results.innerHTML = `
+    <div class="finder-summary">
+      <div class="lead">Closest analogs to <span class="sym">${symbol}</span> on ${new Date(queryDate + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+      <div class="stat"><div class="v acc">${analogs.length}</div><div class="l">found</div></div>
+      <div class="stat"><div class="v ${top.similarity > 0.8 ? 'acc' : ''}">${top.similarity.toFixed(2)}</div><div class="l">closest</div></div>
+    </div>
+
+    <div class="analog-list" style="margin-top: 24px; border-top: 1px solid var(--line);">
+      ${analogs.map((a, i) => {
+        const dt = new Date(a.ts);
+        return `
+          <div class="analog-row" data-id="${a.event_id}">
+            <div class="analog-rank">${String(i + 1).padStart(2, '0')}</div>
+            <div class="analog-date">${monthNames[dt.getMonth()]} ${dt.getDate()}<span class="yr">${dt.getFullYear()}</span></div>
+            <div class="analog-label">${a.label || '(unlabeled)'}</div>
+            <div class="analog-sim">${a.similarity.toFixed(2)}<span class="l">cosine · ${fmtScore(a.divergence_score)}σ</span></div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+
+    <p class="finder-interp">${interpret}</p>
+  `;
+
+  results.querySelectorAll('.analog-row').forEach(r => r.addEventListener('click', () => loadDetail(+r.dataset.id)));
+}
+
+function connectWS() {
+  if (!state.online) return;
+  try {
+    const ws = new WebSocket(`${WS_BASE}/ws/live?api_key=${encodeURIComponent(API_KEY)}`);
+    state.ws = ws;
+    ws.onmessage = e => {
+      try { const m = JSON.parse(e.data); if (m.type === 'divergence_alert') sendToast(m); } catch {}
+    };
+    ws.onclose = () => { state.ws = null; setTimeout(() => state.online && connectWS(), 5000); };
+    ws.onerror = () => ws.close();
+  } catch {}
+}
+
+function sendToast(m) {
+  const stack = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.innerHTML = `
+    <div class="toast-dot"></div>
+    <div class="toast-body">
+      <div class="toast-head">Divergence alert</div>
+      <div class="toast-msg"><span class="em">${m.instrument}</span> · <span class="num">${fmtScore(m.divergence_score)}σ</span> · ${m.regime_label}</div>
+    </div>
+    <span class="toast-close">×</span>
+  `;
+  stack.appendChild(t);
+  t.querySelector('.toast-close').addEventListener('click', () => t.remove());
+  setTimeout(() => t.remove(), 10000);
+  if (document.getElementById('view-dashboard').classList.contains('active')) loadDashboard();
+}
+
+function switchView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.querySelector(`.nav-item[data-view="${name}"]`)?.classList.add('active');
+  document.querySelector('.app').scrollTop = 0;
+
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'subs') loadSubscriptions();
+  if (name === 'finder') loadFinder();
+}
+
+document.querySelectorAll('[data-view]').forEach(el => {
+  el.addEventListener('click', () => switchView(el.dataset.view));
+});
+
+document.getElementById('back-btn').addEventListener('click', () => switchView('dashboard'));
+
+document.getElementById('filter-bar').addEventListener('click', e => {
+  const c = e.target.closest('.seg-item');
+  if (!c) return;
+  document.querySelectorAll('#filter-bar .seg-item').forEach(x => x.classList.remove('active'));
+  c.classList.add('active');
+  state.filter = c.dataset.ac || '';
+  loadDashboard();
+});
+
+function tickClock() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  document.getElementById('clock').textContent = `${hh}:${mm}:${ss}`;
+}
+setInterval(tickClock, 1000); tickClock();
+
+const dateOpts = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
+document.getElementById('hero-date').textContent = new Date().toLocaleDateString('en-US', dateOpts);
+
+(async function init() {
+  await probeAPI();
+  await loadDashboard();
+  if (state.online) connectWS();
+})();
+</script>
+</body>
+</html>

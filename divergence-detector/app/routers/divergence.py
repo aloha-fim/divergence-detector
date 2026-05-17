@@ -42,7 +42,7 @@ async def current(
       JOIN instruments i ON i.id = e.instrument_id
       WHERE i.active
         AND ABS(e.divergence_score) >= :min_abs
-        AND (:ac IS NULL OR i.asset_class = :ac)
+        AND (CAST(:ac AS TEXT) IS NULL OR i.asset_class = CAST(:ac AS TEXT))
       ORDER BY e.instrument_id, e.ts DESC
       LIMIT :lim
     """)
