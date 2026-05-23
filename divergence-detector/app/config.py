@@ -17,8 +17,8 @@ class Settings(BaseSettings):
     narrative_threshold_z: float = 2.5
 
     # Narrative
-    prompt_version: str = "v3-2026-05"
-    llm_model: str = "claude-sonnet-4-5"
+    prompt_version: str = "v4-2026-06"
+    llm_model: str = "claude-opus-4-7"
     llm_temperature: float = 0.3
 
     # Worker
