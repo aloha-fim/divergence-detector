@@ -197,7 +197,7 @@ async def generate_narrative(
         resp = await client.messages.create(
             model=settings.llm_model,
             max_tokens=600,
-            temperature=settings.llm_temperature,
+            #temperature=settings.llm_temperature,
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_msg}],
         )

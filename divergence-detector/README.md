@@ -64,6 +64,7 @@ docker compose up -d
 docker compose exec api python -m app.seed   # ~3 min — generates 2 years of synth data
 
 open web/index.html
+start web/index.html # or in Powershell
 ```
 
 Detailed steps and troubleshooting are in [`RUNBOOK.md`](./RUNBOOK.md).
